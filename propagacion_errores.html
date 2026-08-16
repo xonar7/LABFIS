@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propagación de Errores</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --warn:#E3A64F;
+    --danger:#E2695A;
+    --danger-soft:rgba(226,105,90,0.14);
+    --readout-bg:#0D1712;
+    --readout-fg:#8FE3B0;
+    --readout-fg-soft:#CFEFDC;
+    --readout-border:#23392C;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+    zoom:1;
+    transition:zoom 0.05s linear;
+  }
+
+  .instrumento{ width:100%; max-width:720px; }
+
+  header.masthead{
+    margin-bottom:2rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+
+  h1{ font-size:24px; font-weight:600; margin:0 0 0.4rem; letter-spacing:-0.01em; }
+  .masthead p{ margin:0; color:var(--ink-soft); font-size:14px; max-width:60ch; }
+
+  .formula{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--accent);
+    margin-top:0.6rem;
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:1.25rem 1.4rem;
+    margin-bottom:1rem;
+  }
+
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    gap:0.6rem;
+    margin-bottom:0.9rem;
+  }
+
+  .paso-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:2px 7px;
+    letter-spacing:0.04em;
+  }
+
+  .panel-head h2{ font-size:15px; font-weight:600; margin:0; }
+
+  label.campo-label{
+    display:block;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:0.35rem;
+  }
+
+  input[type="text"]{
+    width:100%;
+    font-family:var(--font-mono);
+    font-size:14.5px;
+    padding:0.5rem 0.65rem;
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  input:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+
+  .fila-var{
+    display:grid;
+    grid-template-columns: 1fr 1.4fr 1.4fr auto;
+    gap:0.5rem;
+    align-items:end;
+    margin-bottom:0.5rem;
+  }
+  @media (max-width:560px){
+    .fila-var{ grid-template-columns: 1fr 1fr; }
+  }
+
+  button{
+    font-family:var(--font-sans);
+    font-size:13.5px;
+    font-weight:500;
+    border-radius:4px;
+    border:1px solid var(--card-border);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.5rem 0.8rem;
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  button:active{ transform:translateY(1px); }
+
+  button.primario{
+    background:var(--accent);
+    border-color:var(--accent-dark);
+    color:var(--surface-2);
+    font-weight:600;
+  }
+  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
+
+  button.quitar{
+    color:var(--danger);
+    border-color:var(--card-border);
+    padding:0.5rem 0.7rem;
+  }
+  button.quitar:hover{ background:var(--danger-soft); border-color:var(--danger); }
+
+  .acciones{ display:flex; gap:0.6rem; margin-top:1.1rem; flex-wrap:wrap; }
+
+  .ayuda{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--ink-faint);
+    margin-top:0.5rem;
+    line-height:1.7;
+  }
+
+  .mensaje{
+    font-size:12.5px;
+    margin-top:0.6rem;
+    padding:0.5rem 0.7rem;
+    border-radius:4px;
+    display:none;
+  }
+  .mensaje.error{ display:block; background:var(--danger-soft); color:var(--danger); }
+
+  .oculto{ display:none !important; }
+
+  .tabla{
+    width:100%;
+    border-collapse:collapse;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    margin-top:0.3rem;
+  }
+  .tabla th, .tabla td{
+    text-align:left;
+    padding:0.4rem 0.5rem;
+    border-bottom:1px solid var(--card-border);
+  }
+  .tabla th{ color:var(--ink-faint); font-weight:500; font-size:11.5px; }
+  .tabla td{ color:var(--ink-soft); }
+  .tabla td.num{ color:var(--ink); text-align:right; }
+
+  .barra-wrap{
+    background:var(--surface-2);
+    border-radius:2px;
+    height:6px;
+    overflow:hidden;
+    min-width:70px;
+  }
+  .barra{ height:100%; background:var(--accent); }
+
+  .readout{
+    background:var(--readout-bg);
+    border:1px solid var(--readout-border);
+    border-radius:6px;
+    padding:1.5rem;
+    text-align:center;
+    margin-top:0.9rem;
+  }
+  .readout .r-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--readout-fg-soft);
+    margin-bottom:0.6rem;
+  }
+  .readout .r-valor{
+    font-family:var(--font-mono);
+    font-size:28px;
+    font-weight:600;
+    color:var(--readout-fg);
+    letter-spacing:0.02em;
+    word-break:break-word;
+  }
+  .readout .r-detalle{
+    margin-top:0.6rem;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--readout-fg-soft);
+  }
+
+  .sin-redondear{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--ink-soft);
+    background:var(--surface-2);
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    padding:0.7rem 0.9rem;
+    line-height:1.8;
+  }
+  .sin-redondear .v{ color:var(--ink); }
+
+  footer.pie{
+    margin-top:1.5rem;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="instrumento">
+
+  <header class="masthead">
+    <p class="eyebrow">Mediciones indirectas</p>
+    <h1>Propagación de errores</h1>
+    <p>Calcula el error de una magnitud obtenida indirectamente a partir de
+    los errores de las variables medidas, combinándolos en cuadratura.</p>
+    <p class="formula">e_f = √( Σ ( ∂f/∂x · e_x )² )</p>
+  </header>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 01</span>
+      <h2>Variables medidas</h2>
+    </div>
+    <div id="lista-vars"></div>
+    <div class="acciones">
+      <button type="button" id="btn-agregar-var">+ Agregar variable</button>
+      <button type="button" id="btn-cientifica" title="Inserta &quot;e&quot; en la celda activa (Valor o Error), p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
+      <button type="button" id="btn-ejemplo">Cargar ejemplo</button>
+    </div>
+    <p class="hint" style="font-size:12px; opacity:0.7; margin:0.5rem 0 0;">
+      Para notación científica escribí, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado
+      numérico del celular no hay tecla "e": tocá el campo Valor o Error y usá el botón ×10ⁿ (e).
+    </p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 02</span>
+      <h2>Función</h2>
+    </div>
+    <label class="campo-label" for="funcion">f = </label>
+    <input type="text" id="funcion" placeholder="ej. pi**2 * m * l**2 / (3 * T**2)" />
+    <div class="ayuda">
+      Potencias: x**2 o x^2 &nbsp;·&nbsp; Raíz: sqrt(x) &nbsp;·&nbsp; Constantes: pi, e<br>
+      Funciones: sin, cos, tan, asin, acos, atan, exp, ln, log10, abs
+    </div>
+    <div class="mensaje error" id="msg-error"></div>
+    <div class="acciones">
+      <button class="primario" id="btn-calcular">Calcular</button>
+      <button type="button" id="btn-limpiar">Limpiar</button>
+    </div>
+  </section>
+
+  <section class="panel oculto" id="panel-resultados">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 03</span>
+      <h2>Contribuciones al error</h2>
+    </div>
+    <table class="tabla" id="tabla-contrib">
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th style="text-align:right">∂f/∂x</th>
+          <th style="text-align:right">|∂f/∂x|·e_x</th>
+          <th style="text-align:right">% varianza</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="ayuda">El reparto porcentual se hace sobre la varianza (contribución²/e_f²), por eso suma 100 %.</div>
+  </section>
+
+  <section class="panel oculto" id="panel-final">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 04</span>
+      <h2>Resultado</h2>
+    </div>
+    <div class="sin-redondear" id="sin-redondear"></div>
+    <div class="readout">
+      <div class="r-label">Resultado final</div>
+      <div class="r-valor" id="r-valor">—</div>
+    </div>
+  </section>
+
+  <footer class="pie">Propagación de errores · Cap. 3, Física I · UMSS</footer>
+</div>
+
+<script>
+(function(){
+
+  // ==================================================================
+  // 0. ZOOM CON CTRL + RUEDA DEL MOUSE
+  //    Ctrl+scroll arriba agranda la página (usa más ancho de pantalla),
+  //    Ctrl+scroll abajo la achica. Se usa la propiedad CSS 'zoom' (no
+  //    estándar pero soportada por Chrome/Edge/Safari) sobre <body>.
+  // ==================================================================
+  let nivelZoom = 1;
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 3;
+  const ZOOM_PASO = 0.1;
+
+  window.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    nivelZoom += (e.deltaY < 0 ? ZOOM_PASO : -ZOOM_PASO);
+    nivelZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nivelZoom));
+    document.body.style.zoom = nivelZoom.toFixed(2);
+  }, { passive: false });
+
+  // ==================================================================
+  // 1. EVALUADOR DE EXPRESIONES
+  //    Parser propio (shunting-yard + AST) para no usar eval(), que
+  //    sería inseguro y además está bloqueado en muchos contextos.
+  // ==================================================================
+
+  const FUNCIONES = {
+    sqrt: Math.sqrt, sin: Math.sin, cos: Math.cos, tan: Math.tan,
+    asin: Math.asin, acos: Math.acos, atan: Math.atan,
+    sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh,
+    exp: Math.exp, ln: Math.log, log: Math.log, log10: Math.log10,
+    abs: Math.abs
+  };
+  const CONSTANTES = { pi: Math.PI, e: Math.E, PI: Math.PI, E: Math.E };
+
+  // --- Tokenizador ---
+  function tokenizar(expr){
+    const tokens = [];
+    let i = 0;
+    while (i < expr.length){
+      const c = expr[i];
+
+      if (/\s/.test(c)){ i++; continue; }
+
+      // Número (admite decimales y notación científica)
+      if (/[0-9.]/.test(c)){
+        let j = i;
+        while (j < expr.length && /[0-9.]/.test(expr[j])) j++;
+        // exponente científico: 1e-5, 2.3E+4
+        if (j < expr.length && /[eE]/.test(expr[j]) && /[0-9+\-]/.test(expr[j+1] || '')){
+          j++;
+          if (/[+\-]/.test(expr[j])) j++;
+          while (j < expr.length && /[0-9]/.test(expr[j])) j++;
+        }
+        const texto = expr.slice(i, j);
+        const valor = Number(texto);
+        if (Number.isNaN(valor)) throw new Error(`Número inválido: "${texto}"`);
+        tokens.push({ tipo: 'num', valor });
+        i = j;
+        continue;
+      }
+
+      // Identificador (variable, constante o función)
+      if (/[a-zA-Z_]/.test(c)){
+        let j = i;
+        while (j < expr.length && /[a-zA-Z0-9_]/.test(expr[j])) j++;
+        tokens.push({ tipo: 'id', nombre: expr.slice(i, j) });
+        i = j;
+        continue;
+      }
+
+      // Operador de potencia: ** o ^
+      if (c === '*' && expr[i+1] === '*'){ tokens.push({ tipo: 'op', op: '^' }); i += 2; continue; }
+      if (c === '^'){ tokens.push({ tipo: 'op', op: '^' }); i++; continue; }
+
+      if ('+-*/'.includes(c)){ tokens.push({ tipo: 'op', op: c }); i++; continue; }
+      if (c === '('){ tokens.push({ tipo: 'parIzq' }); i++; continue; }
+      if (c === ')'){ tokens.push({ tipo: 'parDer' }); i++; continue; }
+      if (c === ','){ tokens.push({ tipo: 'coma' }); i++; continue; }
+
+      throw new Error(`Carácter no reconocido: "${c}"`);
+    }
+    return tokens;
+  }
+
+  // --- Parser descendente recursivo -> AST ---
+  function parsear(tokens){
+    let pos = 0;
+    const ver = () => tokens[pos];
+    const consumir = () => tokens[pos++];
+
+    // expresión := término (('+'|'-') término)*
+    function expresion(){
+      let nodo = termino();
+      while (ver() && ver().tipo === 'op' && (ver().op === '+' || ver().op === '-')){
+        const op = consumir().op;
+        nodo = { tipo: 'bin', op, izq: nodo, der: termino() };
+      }
+      return nodo;
+    }
+
+    // término := unario (('*'|'/') unario)*
+    function termino(){
+      let nodo = unario();
+      while (ver() && ver().tipo === 'op' && (ver().op === '*' || ver().op === '/')){
+        const op = consumir().op;
+        nodo = { tipo: 'bin', op, izq: nodo, der: unario() };
+      }
+      return nodo;
+    }
+
+    // unario := ('-'|'+') unario | potencia
+    function unario(){
+      if (ver() && ver().tipo === 'op' && (ver().op === '-' || ver().op === '+')){
+        const op = consumir().op;
+        const operando = unario();
+        return op === '-' ? { tipo: 'neg', operando } : operando;
+      }
+      return potencia();
+    }
+
+    // potencia := primario ('^' unario)?   -> asociativa a la derecha
+    function potencia(){
+      const base = primario();
+      if (ver() && ver().tipo === 'op' && ver().op === '^'){
+        consumir();
+        return { tipo: 'bin', op: '^', izq: base, der: unario() };
+      }
+      return base;
+    }
+
+    // primario := número | constante | variable | función(args) | (expresión)
+    function primario(){
+      const t = ver();
+      if (!t) throw new Error('Expresión incompleta.');
+
+      if (t.tipo === 'num'){ consumir(); return { tipo: 'num', valor: t.valor }; }
+
+      if (t.tipo === 'id'){
+        consumir();
+        if (ver() && ver().tipo === 'parIzq'){
+          if (!(t.nombre in FUNCIONES)) throw new Error(`Función desconocida: "${t.nombre}"`);
+          consumir(); // (
+          const args = [expresion()];
+          while (ver() && ver().tipo === 'coma'){ consumir(); args.push(expresion()); }
+          if (!ver() || ver().tipo !== 'parDer') throw new Error(`Falta ")" tras ${t.nombre}(`);
+          consumir(); // )
+          return { tipo: 'func', nombre: t.nombre, args };
+        }
+        if (t.nombre in CONSTANTES) return { tipo: 'num', valor: CONSTANTES[t.nombre] };
+        return { tipo: 'var', nombre: t.nombre };
+      }
+
+      if (t.tipo === 'parIzq'){
+        consumir();
+        const nodo = expresion();
+        if (!ver() || ver().tipo !== 'parDer') throw new Error('Falta un paréntesis de cierre ")".');
+        consumir();
+        return nodo;
+      }
+
+      throw new Error('Se esperaba un número, variable o paréntesis.');
+    }
+
+    const arbol = expresion();
+    if (pos < tokens.length) throw new Error('Sobran símbolos al final de la expresión.');
+    return arbol;
+  }
+
+  // --- Evaluación del AST ---
+  function evaluar(nodo, valores){
+    switch (nodo.tipo){
+      case 'num': return nodo.valor;
+      case 'var':
+        if (!(nodo.nombre in valores)) throw new Error(`Variable no definida: "${nodo.nombre}"`);
+        return valores[nodo.nombre];
+      case 'neg': return -evaluar(nodo.operando, valores);
+      case 'func': return FUNCIONES[nodo.nombre](...nodo.args.map(a => evaluar(a, valores)));
+      case 'bin': {
+        const a = evaluar(nodo.izq, valores);
+        const b = evaluar(nodo.der, valores);
+        switch (nodo.op){
+          case '+': return a + b;
+          case '-': return a - b;
+          case '*': return a * b;
+          case '/': return a / b;
+          case '^': return Math.pow(a, b);
+        }
+      }
+    }
+    throw new Error('Nodo de expresión no reconocido.');
+  }
+
+  // --- Derivada parcial numérica (diferencia central) ---
+  // Se usa un paso relativo al valor de la variable para mantener la
+  // precisión tanto en magnitudes grandes como pequeñas.
+  function derivadaParcial(arbol, valores, nombre){
+    const x = valores[nombre];
+    const h = (x !== 0 ? Math.abs(x) : 1) * 1e-6;
+    const masH = Object.assign({}, valores); masH[nombre] = x + h;
+    const menosH = Object.assign({}, valores); menosH[nombre] = x - h;
+    return (evaluar(arbol, masH) - evaluar(arbol, menosH)) / (2 * h);
+  }
+
+  // ==================================================================
+  // 2. FORMATEO (redondeo bancario, igual que la versión Python)
+  // ==================================================================
+
+  function roundHalfEven(value, decimals){
+    const factor = Math.pow(10, decimals);
+    const scaled = value * factor;
+    const piso = Math.floor(scaled);
+    const resto = scaled - piso;
+    let resultado;
+    if (Math.abs(resto - 0.5) < 1e-9){
+      resultado = (piso % 2 === 0) ? piso : piso + 1;
+    } else {
+      resultado = Math.round(scaled);
+    }
+    return resultado / factor;
+  }
+
+  // Redondeo a N cifras significativas, corrigiendo el cambio de orden
+  // de magnitud (9,96 -> "10") y reponiendo los ceros de relleno en
+  // valores grandes (156,7 con 2 c.s. -> "160").
+  function cifrasSignificativas(valor, n){
+    if (valor === 0) return n === 1 ? '0' : (0).toFixed(n - 1);
+    const d = Math.floor(Math.log10(Math.abs(valor))) + 1;
+    const decimales = n - d;
+    const redondeado = roundHalfEven(valor, decimales);
+    const dFinal = redondeado === 0 ? 1 : Math.floor(Math.log10(Math.abs(redondeado))) + 1;
+    const decimalesFinal = n - dFinal;
+    if (decimalesFinal > 0) return redondeado.toFixed(decimalesFinal);
+    return roundHalfEven(valor, decimalesFinal).toFixed(0);
+  }
+
+  function formatearErrorPorcentual(ep){
+    if (!isFinite(ep)) return 'no definido';
+    if (ep === 0) return '0.0%';
+    return cifrasSignificativas(ep, 2) + '%';
+  }
+
+  // Notación de ingeniería: exponente múltiplo de 3, error a 1 c.s.
+  // El exponente sale de la fórmula general, válida tanto para
+  // exponentes positivos como NEGATIVOS (Math.floor redondea hacia
+  // abajo también con negativos). Antes se forzaba a +3 cuando el error
+  // era menor que 1000, lo que impedía expresar 0,00051 ± 0,00002
+  // como (0,51 ± 0,02) × 10^-3.
+  // Devuelve { texto, valorRed, errorRed } -- valorRed/errorRed en la
+  // ESCALA REAL (multiplicados de vuelta por 10^exponente).
+  function redondearIngenieria(valor, error){
+    const magError = Math.floor(Math.log10(Math.abs(error)));
+    let exponente = (Math.floor(magError / 3) + 1) * 3;
+
+    function normalizar(exp){
+      const factor = Math.pow(10, exp);
+      const valorNorm = valor / factor;
+      const errorNorm = error / factor;
+      const errAbs = Math.abs(errorNorm);
+      const k = errAbs === 0 ? 0 : Math.floor(Math.log10(errAbs));
+      const decimales = Math.max(0, -k);
+      const errorRed = roundHalfEven(errorNorm, decimales);
+      return { valorNorm, errorRed, decimales };
+    }
+
+    let { valorNorm, errorRed, decimales } = normalizar(exponente);
+    if (Math.abs(errorRed) >= 10){
+      exponente += 3;
+      ({ valorNorm, errorRed, decimales } = normalizar(exponente));
+    }
+    const valorRed = roundHalfEven(valorNorm, decimales);
+    const texto = `(${valorRed.toFixed(decimales)} ± ${errorRed.toFixed(decimales)}) × 10^${exponente}`;
+    const factor = Math.pow(10, exponente);
+    return { texto, valorRed: valorRed * factor, errorRed: errorRed * factor };
+  }
+
+  function formatearIngenieria(valor, error){
+    return redondearIngenieria(valor, error).texto;
+  }
+
+  // Devuelve { texto, valorRed, errorRed } ya redondeados (error < 10).
+  function redondearNormal(valor, error){
+    let decimales;
+    if (error >= 1){
+      decimales = 0;                                   // 1 <= error < 10
+    } else {
+      decimales = -Math.floor(Math.log10(Math.abs(error)));
+    }
+    const errorRed = roundHalfEven(error, decimales);
+    const valorRed = roundHalfEven(valor, decimales);
+    const texto = `${valorRed.toFixed(decimales)} ± ${errorRed.toFixed(decimales)}`;
+    return { texto, valorRed, errorRed };
+  }
+
+  function formatearNormal(valor, error){
+    return redondearNormal(valor, error).texto;
+  }
+
+  // Se usa notación de ingeniería cuando el exponente múltiplo de 3
+  // resultaría distinto de cero: error >= 10 (exponente positivo) o
+  // error < 0.001 (exponente negativo). En el rango intermedio el
+  // exponente sería 0 y corresponde la notación decimal normal.
+  function formatearResultadoFinal(valor, error){
+    if (!(error > 0)) return `${valor} ± 0`;
+    return (error >= 10 || error < 0.001)
+      ? formatearIngenieria(valor, error)
+      : formatearNormal(valor, error);
+  }
+
+  // Igual que formatearResultadoFinal, pero además del TEXTO devuelve
+  // valorRed/errorRed ya redondeados a la precisión final mostrada.
+  // Esto es lo que debe usarse para cualquier cálculo posterior que
+  // dependa del resultado (como el error porcentual): calcularlo con
+  // valor/error SIN redondear es incorrecto, porque el error porcentual
+  // reportado debe corresponder al resultado que efectivamente se
+  // publica, no a la cifra interna de más precisión.
+  function redondearResultadoFinal(valor, error){
+    if (!(error > 0)) return { texto: `${valor} ± 0`, valorRed: valor, errorRed: 0 };
+    return (error >= 10 || error < 0.001)
+      ? redondearIngenieria(valor, error)
+      : redondearNormal(valor, error);
+  }
+
+  function limpiarCeros(s){
+    if (s.indexOf('.') === -1) return s;
+    s = s.replace(/0+$/, '');
+    if (s.endsWith('.')) s = s.slice(0, -1);
+    return s;
+  }
+
+  // ==================================================================
+  // 3. INTERFAZ
+  // ==================================================================
+
+  const listaVars = document.getElementById('lista-vars');
+  const inputFuncion = document.getElementById('funcion');
+  const msgError = document.getElementById('msg-error');
+
+  function crearFilaVariable(nombre = '', valor = '', error = ''){
+    const fila = document.createElement('div');
+    fila.className = 'fila-var';
+    fila.innerHTML = `
+      <div>
+        <label class="campo-label">Variable</label>
+        <input type="text" class="v-nombre" placeholder="x" value="${nombre}">
+      </div>
+      <div>
+        <label class="campo-label">Valor</label>
+        <input type="text" class="v-valor" inputmode="decimal" enterkeyhint="next" placeholder="0.0" value="${valor}">
+      </div>
+      <div>
+        <label class="campo-label">Error (±)</label>
+        <input type="text" class="v-error" inputmode="decimal" enterkeyhint="next" placeholder="0.0" value="${error}">
+      </div>
+      <div><button type="button" class="quitar" title="Quitar variable">×</button></div>
+    `;
+    fila.querySelector('.quitar').addEventListener('click', () => {
+      if (listaVars.children.length > 1) fila.remove();
+    });
+
+    // Navegación tipo hoja de cálculo entre las 3 casillas de cada fila:
+    //   Enter        -> siguiente casilla a la derecha; en la última
+    //                   (error) crea una fila NUEVA solo si esta es la
+    //                   última fila existente (si ya hay una fila debajo
+    //                   sin llenar, salta a esa en vez de crear otra).
+    //   Flecha arriba/abajo -> misma columna, fila anterior/siguiente.
+    //   Flecha izquierda/derecha -> columna anterior/siguiente, solo
+    //                   cuando el cursor de texto ya está en el borde
+    //                   del campo (para no interferir con la edición).
+    const COLUMNAS = ['v-nombre', 'v-valor', 'v-error'];
+    COLUMNAS.forEach((clase, idx) => {
+      const input = fila.querySelector('.' + clase);
+
+      input.addEventListener('keydown', (e) => {
+        const filaActual = fila;
+        const idxFila = Array.prototype.indexOf.call(listaVars.children, filaActual);
+
+        function enfocarCasilla(filaObjetivo, columnaIdx, alFinal){
+          if (!filaObjetivo) return;
+          const campo = filaObjetivo.querySelector('.' + COLUMNAS[columnaIdx]);
+          campo.focus();
+          if (alFinal){
+            const len = campo.value.length;
+            campo.setSelectionRange(len, len);
+          } else {
+            campo.setSelectionRange(0, 0);
+          }
+        }
+
+        if (e.key === 'Enter'){
+          e.preventDefault();
+          if (idx < COLUMNAS.length - 1){
+            enfocarCasilla(filaActual, idx + 1, false);
+          } else {
+            const esUltimaFila = idxFila === listaVars.children.length - 1;
+            const filaSiguiente = esUltimaFila
+              ? (crearFilaVariable(), listaVars.children[listaVars.children.length - 1])
+              : listaVars.children[idxFila + 1];
+            enfocarCasilla(filaSiguiente, 0, false);
+          }
+          return;
+        }
+
+        if (e.key === 'ArrowUp'){
+          e.preventDefault();
+          enfocarCasilla(listaVars.children[idxFila - 1], idx, false);
+          return;
+        }
+        if (e.key === 'ArrowDown'){
+          e.preventDefault();
+          enfocarCasilla(listaVars.children[idxFila + 1], idx, false);
+          return;
+        }
+        if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0){
+          e.preventDefault();
+          if (idx > 0){
+            enfocarCasilla(filaActual, idx - 1, true);
+          } else {
+            enfocarCasilla(listaVars.children[idxFila - 1], COLUMNAS.length - 1, true);
+          }
+          return;
+        }
+        if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && input.selectionEnd === input.value.length){
+          e.preventDefault();
+          if (idx < COLUMNAS.length - 1){
+            enfocarCasilla(filaActual, idx + 1, false);
+          } else {
+            enfocarCasilla(listaVars.children[idxFila + 1], 0, false);
+          }
+          return;
+        }
+      });
+    });
+
+    listaVars.appendChild(fila);
+  }
+
+  // Rastrea la última celda de Valor/Error enfocada, para saber dónde
+  // insertar "e" con el botón ×10ⁿ (necesario en el celular: el teclado
+  // numérico de inputmode="decimal" no tiene la letra "e" ni "^").
+  let celdaActiva = null;
+  listaVars.addEventListener('focusin', (e) => {
+    const t = e.target;
+    if (t.classList && (t.classList.contains('v-valor') || t.classList.contains('v-error'))) {
+      celdaActiva = t;
+    }
+  });
+  document.getElementById('btn-cientifica').addEventListener('click', () => {
+    if (!celdaActiva) return;
+    const val = celdaActiva.value;
+    if (/[eE]/.test(val)) return; // ya tiene notación científica
+    const pos = celdaActiva.selectionStart ?? val.length;
+    celdaActiva.value = val.slice(0, pos) + 'e' + val.slice(pos);
+    celdaActiva.focus();
+    celdaActiva.setSelectionRange(pos + 1, pos + 1);
+  });
+
+  function leerVariables(){
+    const variables = {};
+    for (const fila of listaVars.children){
+      const nombre = fila.querySelector('.v-nombre').value.trim();
+      const valorRaw = fila.querySelector('.v-valor').value.trim().replace(',', '.');
+      const errorRaw = fila.querySelector('.v-error').value.trim().replace(',', '.');
+
+      if (nombre === '' && valorRaw === '' && errorRaw === '') continue;
+
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(nombre)){
+        throw new Error(`Nombre de variable inválido: "${nombre}". Use letras, dígitos y guion bajo, empezando por letra.`);
+      }
+      if (nombre in FUNCIONES || nombre in CONSTANTES){
+        throw new Error(`"${nombre}" es un nombre reservado (función o constante). Use otro.`);
+      }
+      const valor = Number(valorRaw);
+      const error = Number(errorRaw);
+      if (valorRaw === '' || Number.isNaN(valor)) throw new Error(`Valor inválido para "${nombre}".`);
+      if (errorRaw === '' || Number.isNaN(error)) throw new Error(`Error inválido para "${nombre}".`);
+      if (error <= 0) throw new Error(`El error de "${nombre}" debe ser positivo.`);
+
+      variables[nombre] = { valor, error };
+    }
+    if (Object.keys(variables).length === 0) throw new Error('Defina al menos una variable.');
+    return variables;
+  }
+
+  function calcular(){
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+
+    let variables, arbol;
+    try {
+      variables = leerVariables();
+      const exprTexto = inputFuncion.value.trim();
+      if (exprTexto === '') throw new Error('Ingrese la función f.');
+      arbol = parsear(tokenizar(exprTexto));
+    } catch (err){
+      msgError.textContent = err.message;
+      msgError.classList.add('error');
+      return;
+    }
+
+    const valores = {};
+    for (const n in variables) valores[n] = variables[n].valor;
+
+    let valorFuncion, derivadas = {}, contribuciones = {};
+    try {
+      valorFuncion = evaluar(arbol, valores);
+      if (!isFinite(valorFuncion)) throw new Error('La función no da un valor finito con esos datos.');
+      for (const n in variables){
+        const d = derivadaParcial(arbol, valores, n);
+        if (!isFinite(d)) throw new Error(`La derivada respecto de "${n}" no es finita.`);
+        derivadas[n] = d;
+        contribuciones[n] = Math.abs(d) * variables[n].error;
+      }
+    } catch (err){
+      msgError.textContent = err.message;
+      msgError.classList.add('error');
+      return;
+    }
+
+    // Error total en cuadratura
+    const errorTotal = Math.sqrt(
+      Object.values(contribuciones).reduce((acc, c) => acc + c * c, 0)
+    );
+
+    // Reparto por VARIANZA: los porcentajes suman 100 %
+    const reparto = {};
+    for (const n in contribuciones){
+      reparto[n] = errorTotal > 0
+        ? (contribuciones[n] * contribuciones[n]) / (errorTotal * errorTotal) * 100
+        : 0;
+    }
+
+    // Tabla de contribuciones, ordenada de mayor a menor
+    const tbody = document.querySelector('#tabla-contrib tbody');
+    tbody.innerHTML = '';
+    Object.keys(reparto).sort((a, b) => reparto[b] - reparto[a]).forEach(n => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td>${n}</td>` +
+        `<td class="num">${derivadas[n].toExponential(4)}</td>` +
+        `<td class="num">${contribuciones[n].toExponential(4)}</td>` +
+        `<td class="num">${reparto[n].toFixed(1)} %</td>` +
+        `<td><div class="barra-wrap"><div class="barra" style="width:${reparto[n].toFixed(1)}%"></div></div></td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('panel-resultados').classList.remove('oculto');
+
+    // Valores sin redondear
+    document.getElementById('sin-redondear').innerHTML =
+      `f&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="v">${limpiarCeros(valorFuncion.toFixed(10))}</span><br>` +
+      `error_f = <span class="v">${limpiarCeros(errorTotal.toFixed(10))}</span>`;
+
+    // Resultado final: se calcula UNA vez, y el error porcentual se
+    // obtiene de los valores YA REDONDEADOS (valorRed/errorRed), no de
+    // valorFuncion/errorTotal sin redondear -- el porcentaje reportado
+    // debe corresponder al resultado que efectivamente se publica.
+    const { texto: baseFormateado, valorRed, errorRed } =
+      redondearResultadoFinal(valorFuncion, errorTotal);
+
+    const errorPorcentual = valorRed !== 0
+      ? (errorRed / Math.abs(valorRed)) * 100
+      : Infinity;
+
+    const pctFormateado = formatearErrorPorcentual(errorPorcentual);
+    // Formato combinado: "(0.51 ± 0.02) × 10^-3 [u]; 3.5%"
+    document.getElementById('r-valor').textContent = `${baseFormateado} [u]; ${pctFormateado}`;
+    document.getElementById('panel-final').classList.remove('oculto');
+  }
+
+  // --- Eventos ---
+  document.getElementById('btn-agregar-var').addEventListener('click', () => crearFilaVariable());
+  document.getElementById('btn-calcular').addEventListener('click', calcular);
+
+  document.getElementById('btn-ejemplo').addEventListener('click', () => {
+    listaVars.innerHTML = '';
+    crearFilaVariable('m', '0.05697', '0.00001');
+    crearFilaVariable('l', '0.24', '0.0005');
+    crearFilaVariable('T', '4.45', '0.04');
+    inputFuncion.value = 'pi**2 * m * l**2 / (3 * T**2)';
+  });
+
+  document.getElementById('btn-limpiar').addEventListener('click', () => {
+    listaVars.innerHTML = '';
+    crearFilaVariable();
+    inputFuncion.value = '';
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+    document.getElementById('panel-resultados').classList.add('oculto');
+    document.getElementById('panel-final').classList.add('oculto');
+  });
+
+  inputFuncion.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){ e.preventDefault(); calcular(); }
+  });
+
+  // Estado inicial: una sola fila vacía; Enter en su última casilla
+  // agrega la siguiente cuando haga falta.
+  crearFilaVariable();
+})();
+</script>
+
+</body>
+</html>

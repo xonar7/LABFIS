@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redondeo a N Cifras Significativas</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --danger:#E2695A;
+    --danger-soft:rgba(226,105,90,0.14);
+    --readout-bg:#0D1712;
+    --readout-fg:#8FE3B0;
+    --readout-fg-soft:#CFEFDC;
+    --readout-border:#23392C;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+  }
+
+  .instrumento{
+    width:100%;
+    max-width:560px;
+  }
+
+  header.masthead{
+    margin-bottom:2rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+
+  h1{
+    font-size:24px;
+    font-weight:600;
+    margin:0 0 0.4rem;
+    letter-spacing:-0.01em;
+  }
+
+  .masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+    max-width:52ch;
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:1.25rem 1.4rem;
+    margin-bottom:1rem;
+  }
+
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    gap:0.6rem;
+    margin-bottom:0.9rem;
+  }
+
+  .paso-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:2px 7px;
+    letter-spacing:0.04em;
+  }
+
+  .panel-head h2{
+    font-size:15px;
+    font-weight:600;
+    margin:0;
+  }
+
+  label.campo-label{
+    display:block;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:0.35rem;
+  }
+
+  .fila-dos{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:0.9rem;
+  }
+
+  .fila-valor-e{
+    display:flex;
+    gap:0.5rem;
+  }
+  .fila-valor-e input{ flex:1; }
+  .fila-valor-e button{
+    flex-shrink:0;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    padding:0.55rem 0.7rem;
+  }
+
+  .hint{
+    font-size:12px;
+    color:var(--ink-faint);
+    margin:0.4rem 0 0;
+  }
+  .hint code{
+    font-family:var(--font-mono);
+    background:var(--surface-2);
+    padding:0 4px;
+    border-radius:3px;
+  }
+
+  input[type="number"], input[type="text"]{
+    width:100%;
+    font-family:var(--font-mono);
+    font-size:15px;
+    padding:0.55rem 0.7rem;
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+
+  input:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+
+  button{
+    font-family:var(--font-sans);
+    font-size:13.5px;
+    font-weight:500;
+    border-radius:4px;
+    border:1px solid var(--card-border);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.55rem 0.9rem;
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  button:active{ transform:translateY(1px); }
+  button:disabled{ opacity:0.45; cursor:not-allowed; }
+
+  button.primario{
+    background:var(--accent);
+    border-color:var(--accent-dark);
+    color:var(--surface-2);
+    font-weight:600;
+  }
+  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
+
+  .acciones{
+    display:flex;
+    gap:0.6rem;
+    margin-top:1.1rem;
+  }
+
+  .mensaje{
+    font-size:12.5px;
+    margin-top:0.6rem;
+    padding:0.4rem 0.6rem;
+    border-radius:4px;
+    display:none;
+  }
+  .mensaje.error{ display:block; background:var(--danger-soft); color:var(--danger); }
+
+  .oculto{ display:none !important; }
+
+  .readout{
+    background:var(--readout-bg);
+    border:1px solid var(--readout-border);
+    border-radius:6px;
+    padding:1.6rem 1.5rem;
+    text-align:center;
+    margin-top:0.9rem;
+  }
+  .readout .r-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--readout-fg-soft);
+    margin-bottom:0.6rem;
+  }
+  .readout .r-valor{
+    font-family:var(--font-mono);
+    font-size:36px;
+    font-weight:600;
+    color:var(--readout-fg);
+    letter-spacing:0.02em;
+  }
+  .readout .r-detalle{
+    margin-top:0.6rem;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--readout-fg-soft);
+  }
+
+  footer.pie{
+    margin-top:1.5rem;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="instrumento">
+
+  <header class="masthead">
+    <p class="eyebrow">Instrumento de redondeo</p>
+    <h1>Cifras significativas</h1>
+    <p>Redondea un valor a la cantidad de cifras significativas que elijas,
+    con la regla mitad hacia arriba (round half up).</p>
+  </header>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">DATOS</span>
+      <h2>Valor y cifras significativas</h2>
+    </div>
+    <div class="fila-dos">
+      <div>
+        <label class="campo-label" for="valor">Cifra a redondear</label>
+        <div class="fila-valor-e">
+          <input type="text" id="valor" inputmode="decimal" enterkeyhint="done" placeholder="ej. 452.318" />
+          <button type="button" id="btn-cientifica" title="Inserta &quot;e&quot; en el campo, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
+        </div>
+      </div>
+      <div>
+        <label class="campo-label" for="cifras">N.º de cifras</label>
+        <input type="number" id="cifras" min="1" step="1" placeholder="ej. 3" />
+      </div>
+    </div>
+    <p class="hint">
+      Para notación científica escribí, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado
+      numérico del celular no hay tecla "e": usá el botón ×10ⁿ (e) para insertarla.
+    </p>
+    <div class="mensaje error" id="msg-error"></div>
+    <div class="acciones">
+      <button class="primario" id="btn-redondear">Redondear</button>
+      <button type="button" id="btn-reiniciar">Reiniciar</button>
+    </div>
+  </section>
+
+  <section class="readout oculto" id="panel-resultado">
+    <div class="r-label">Resultado</div>
+    <div class="r-valor" id="r-valor">—</div>
+    <div class="r-detalle" id="r-detalle"></div>
+  </section>
+
+  <footer class="pie">Redondeo a cifras significativas · UMSS</footer>
+</div>
+
+<script>
+(function(){
+
+  // Redondeo bancario (mitad al par más cercano / round half even).
+  // Ej: 2.5 -> 2, 3.5 -> 4, 45 (a 1 cifra, escala de decenas) -> 40.
+  function roundHalfEven(value, decimals){
+    const factor = Math.pow(10, decimals);
+    const scaled = value * factor;
+    const piso = Math.floor(scaled);
+    const resto = scaled - piso;
+    const eps = 1e-9;
+    let resultado;
+    if (Math.abs(resto - 0.5) < eps){
+      // Empate exacto: redondea al entero par más cercano
+      resultado = (piso % 2 === 0) ? piso : piso + 1;
+    } else {
+      resultado = Math.round(scaled);
+    }
+    return resultado / factor;
+  }
+
+  // Redondeo a N cifras significativas (regla bancaria: mitad al par más
+  // cercano). Ajusta los decimales a mostrar si el redondeo cambia el
+  // orden de magnitud (ej. 9.96 -> "10" en vez de "10.0" con 2 cifras),
+  // y usa notación científica (ej. "1.2e3") cuando la notación decimal
+  // normal obligaría a mostrar ceros de relleno ambiguos antes del punto
+  // decimal (ej. 1200 a 2 cifras: "1200" sugiere 4 cifras).
+  function redondearCifrasSignificativas(valor, n){
+    if (valor === 0) return n === 1 ? '0' : (0).toFixed(n - 1);
+    const absVal = Math.abs(valor);
+    const d = Math.floor(Math.log10(absVal)) + 1;
+    const decimales = n - d;
+    const redondeado = roundHalfEven(valor, decimales);
+    const dFinal = redondeado === 0 ? 1 : Math.floor(Math.log10(Math.abs(redondeado))) + 1;
+    const decimalesFinal = n - dFinal;
+
+    if (decimalesFinal < 0){
+      const exponente = dFinal - 1;
+      const mantisa = redondeado / Math.pow(10, exponente);
+      const decimalesMantisa = n - 1;
+      const textoMantisa = decimalesMantisa > 0 ? mantisa.toFixed(decimalesMantisa) : mantisa.toFixed(0);
+      return `${textoMantisa}e${exponente}`;
+    }
+
+    return decimalesFinal > 0 ? redondeado.toFixed(decimalesFinal) : redondeado.toFixed(0);
+  }
+
+  const inputValor = document.getElementById('valor');
+  const inputCifras = document.getElementById('cifras');
+  const btnRedondear = document.getElementById('btn-redondear');
+  const btnReiniciar = document.getElementById('btn-reiniciar');
+  const btnCientifica = document.getElementById('btn-cientifica');
+
+  // El teclado numérico (inputmode="decimal") del celular no tiene la
+  // letra "e": este botón la inserta en la posición del cursor, para
+  // poder escribir notación científica (ej. 1.5 -> 1.5e-3) sin ella.
+  btnCientifica.addEventListener('click', () => {
+    const val = inputValor.value;
+    if (/[eE]/.test(val)) { inputValor.focus(); return; }
+    const pos = inputValor.selectionStart ?? val.length;
+    inputValor.value = val.slice(0, pos) + 'e' + val.slice(pos);
+    inputValor.focus();
+    inputValor.setSelectionRange(pos + 1, pos + 1);
+  });
+  const msgError = document.getElementById('msg-error');
+  const panelResultado = document.getElementById('panel-resultado');
+  const rValor = document.getElementById('r-valor');
+  const rDetalle = document.getElementById('r-detalle');
+
+  function calcular(){
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+
+    const valorRaw = inputValor.value.trim().replace(',', '.');
+    const cifrasRaw = inputCifras.value.trim();
+
+    const valor = Number(valorRaw);
+    const cifras = Number(cifrasRaw);
+
+    if (valorRaw === '' || Number.isNaN(valor)){
+      msgError.textContent = 'Ingrese una cifra numérica válida.';
+      msgError.classList.add('error');
+      panelResultado.classList.add('oculto');
+      return;
+    }
+    if (cifrasRaw === '' || !Number.isInteger(cifras) || cifras < 1){
+      msgError.textContent = 'El número de cifras significativas debe ser un entero ≥ 1.';
+      msgError.classList.add('error');
+      panelResultado.classList.add('oculto');
+      return;
+    }
+
+    const resultado = redondearCifrasSignificativas(valor, cifras);
+    rValor.textContent = resultado;
+    rDetalle.textContent = `${cifras} cifra${cifras === 1 ? '' : 's'} significativa${cifras === 1 ? '' : 's'} · valor original: ${valorRaw}`;
+    panelResultado.classList.remove('oculto');
+  }
+
+  btnRedondear.addEventListener('click', calcular);
+
+  inputValor.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      inputCifras.focus();
+    }
+  });
+  inputCifras.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      calcular();
+    }
+  });
+
+  btnReiniciar.addEventListener('click', () => {
+    inputValor.value = '';
+    inputCifras.value = '';
+    msgError.classList.remove('error');
+    panelResultado.classList.add('oculto');
+    inputValor.focus();
+  });
+
+  inputValor.focus();
+})();
+</script>
+
+</body>
+</html>

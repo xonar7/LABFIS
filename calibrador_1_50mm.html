@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Calibrador (Vernier) 1/50 mm</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --nonio:#E3A64F;
+    --nonio-soft:rgba(227,166,79,0.15);
+    --danger:#E2695A;
+    --danger-soft:rgba(226,105,90,0.14);
+    --readout-bg:#0D1712;
+    --readout-border:#23392C;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+  }
+
+  .instrumento{
+    width:100%;
+    max-width:740px;
+  }
+
+  header.masthead{
+    margin-bottom:2rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+
+  h1{
+    font-size:24px;
+    font-weight:600;
+    margin:0 0 0.4rem;
+    letter-spacing:-0.01em;
+  }
+
+  .masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+    max-width:58ch;
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:1.25rem 1.4rem;
+    margin-bottom:1rem;
+  }
+
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:0.6rem;
+    margin-bottom:0.9rem;
+  }
+
+  .paso-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:2px 7px;
+    letter-spacing:0.04em;
+  }
+
+  .marcador{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--ink-faint);
+  }
+
+  .lienzo-wrap{
+    background:var(--readout-bg);
+    border:1px solid var(--readout-border);
+    border-radius:6px;
+    padding:0.6rem 0.4rem;
+    overflow-x:auto;
+  }
+  .lienzo-wrap svg{ display:block; margin:0 auto; }
+
+  .leyenda{
+    display:flex;
+    gap:1.2rem;
+    justify-content:center;
+    margin-top:0.6rem;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--ink-faint);
+  }
+  .leyenda span{ display:inline-flex; align-items:center; gap:0.35rem; }
+
+  .fila-respuesta{
+    display:flex;
+    gap:0.6rem;
+    align-items:flex-end;
+    margin-top:1.1rem;
+  }
+  .fila-respuesta > div{ flex:1; }
+
+  label.campo-label{
+    display:block;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:0.35rem;
+  }
+
+  input[type="text"]{
+    width:100%;
+    font-family:var(--font-mono);
+    font-size:15px;
+    padding:0.55rem 0.7rem;
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  input:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+
+  button{
+    font-family:var(--font-sans);
+    font-size:13.5px;
+    font-weight:500;
+    border-radius:4px;
+    border:1px solid var(--card-border);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.55rem 0.9rem;
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  button:active{ transform:translateY(1px); }
+
+  button.primario{
+    background:var(--accent);
+    border-color:var(--accent-dark);
+    color:var(--surface-2);
+    font-weight:600;
+  }
+  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
+
+  .acciones{
+    display:flex;
+    gap:0.6rem;
+    margin-top:1.1rem;
+  }
+
+  .oculto{ display:none !important; }
+
+  .feedback{
+    margin-top:1rem;
+    padding:0.8rem 1rem;
+    border-radius:4px;
+    font-size:13.5px;
+  }
+  .feedback.correcto{ background:var(--accent-soft); color:var(--accent); }
+  .feedback.incorrecto{ background:var(--danger-soft); color:var(--danger); }
+
+  .desglose{
+    margin-top:0.7rem;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.8;
+  }
+  .desglose .valor{ color:var(--ink); }
+  .marcador-nonio{ color:var(--nonio); }
+
+  .puntaje{
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--ink-faint);
+    margin-top:0.4rem;
+  }
+
+  footer.pie{
+    margin-top:1.5rem;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="instrumento">
+
+  <header class="masthead">
+    <p class="eyebrow">Simulador de práctica</p>
+    <h1>Lectura del calibrador (vernier) — 1/50 mm</h1>
+    <p>Escala principal en milímetros arriba, nonio de 50 divisiones abajo (rotulado de 0 a 9 cada 0,1 mm). 
+    Identifica la línea del nonio que coincide con una marca de la escala principal e ingresa el valor medido.</p>
+  </header>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">EJERCICIO</span>
+      <span class="marcador" id="precision-label">Precisión: 1/50 mm = 0,02 mm</span>
+    </div>
+
+    <div class="lienzo-wrap">
+      <div id="svg-container"></div>
+    </div>
+    <div class="leyenda">
+      <span>Arriba: regla fija — números en cm, marcas cada 1 mm</span>
+      <span>Abajo: nonio — 50 divisiones (49 mm)</span>
+    </div>
+
+    <div class="fila-respuesta">
+      <div>
+        <label class="campo-label" for="respuesta">Lectura total (mm)</label>
+        <input type="text" id="respuesta" inputmode="decimal" placeholder="ej. 23,48" />
+      </div>
+    </div>
+
+    <div class="acciones">
+      <button class="primario" id="btn-verificar">Verificar</button>
+      <button type="button" id="btn-nuevo">Nuevo ejercicio</button>
+    </div>
+
+    <div class="feedback oculto" id="feedback"></div>
+    <div class="desglose oculto" id="desglose"></div>
+  </section>
+
+  <p class="puntaje" id="puntaje">Aciertos: 0 / 0</p>
+
+  <footer class="pie">Simulador de lectura de calibrador · Cap. 1, sección 1.5 · UMSS</footer>
+</div>
+
+<script>
+(function(){
+
+  // ---------- Parámetros del instrumento 1/50 mm ----------
+  const LC = 0.02;          // resolución: 1/50 mm = 0.02 mm
+  const N = 50;             // 50 divisiones en el nonio
+  const SCALE_PX = 13.5;    // factor de escala en píxeles por mm
+  const MARGIN_L = 40;
+  const MARGIN_R = 40;
+  const WINDOW_MM = 64;     // ventana visible: cubre el nonio de 49 mm + margen adicional
+
+  const Y_RULE_TOP = 34;
+  const Y_INTERFACE = 96;
+  const Y_SLIDER_BOT = 160;
+  const HEIGHT = 200;
+
+  let ejercicio = null;
+  let aciertos = 0;
+  let intentos = 0;
+
+  function generarEjercicio(){
+    const cm = Math.floor(Math.random() * 10);        // 0 a 9 cm
+    const windowStart = cm * 10;
+    const resto = Math.floor(Math.random() * 10);     // 0 a 9 mm
+    const msr = windowStart + resto;
+    const i = Math.floor(Math.random() * N);          // 0 a 49 divisiones
+    const valorReal = Math.round((msr + i * LC) * 100) / 100;
+    ejercicio = { msr, i, valorReal, windowStart, cm };
+    return ejercicio;
+  }
+
+  function xPos(mm, windowStart){
+    return MARGIN_L + (mm - windowStart) * SCALE_PX;
+  }
+
+  function construirSVG(ej, revelado){
+    const { msr, i, valorReal, windowStart } = ej;
+    const windowEnd = windowStart + WINDOW_MM;
+    const width = MARGIN_L + WINDOW_MM * SCALE_PX + MARGIN_R;
+
+    let partes = [];
+    partes.push(`<svg viewBox="0 0 ${width} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono', monospace">`);
+
+    // Cuerpo de la regla fija
+    partes.push(`<rect x="0" y="${Y_RULE_TOP}" width="${width}" height="${Y_INTERFACE - Y_RULE_TOP}" fill="#D9DEDA" stroke="#8C948E" stroke-width="1"/>`);
+
+    // Cursor deslizante (con margen lateral para dar espacio a la etiqueta 0.02 mm)
+    const xSliderIni = xPos(valorReal, windowStart) - 12;
+    const xSliderFin = xPos(valorReal + 49, windowStart) + 40;
+    partes.push(`<rect x="${xSliderIni.toFixed(1)}" y="${Y_INTERFACE}" width="${(xSliderFin - xSliderIni).toFixed(1)}" height="${Y_SLIDER_BOT - Y_INTERFACE}" fill="#C3CAC5" stroke="#8C948E" stroke-width="1"/>`);
+
+    // Escala principal (regla fija)
+    for (let v = Math.ceil(windowStart); v <= windowEnd; v++){
+      const xp = xPos(v, windowStart);
+      const largo = (v % 10 === 0) ? 26 : ((v % 5 === 0) ? 20 : 13);
+      const esCoincidencia = revelado && v === (msr + i);
+      const color = esCoincidencia ? '#1B8F5A' : '#25302A';
+      const grosor = esCoincidencia ? 2.4 : 1.0;
+      partes.push(`<line x1="${xp.toFixed(1)}" y1="${Y_INTERFACE}" x2="${xp.toFixed(1)}" y2="${Y_INTERFACE - largo}" stroke="${color}" stroke-width="${grosor}"/>`);
+      if (v % 10 === 0){
+        partes.push(`<text x="${xp.toFixed(1)}" y="${Y_INTERFACE - largo - 6}" font-size="13" font-weight="bold" fill="#1A211D" text-anchor="middle">${v / 10}</text>`);
+      }
+    }
+
+    // Rótulo de la regla (cm)
+    partes.push(`<text x="${width - 12}" y="${Y_RULE_TOP + 18}" font-size="13" font-weight="bold" fill="#1A211D" text-anchor="end">cm</text>`);
+
+    // Línea de contacto
+    partes.push(`<line x1="0" y1="${Y_INTERFACE}" x2="${width}" y2="${Y_INTERFACE}" stroke="#6E7772" stroke-width="1.2"/>`);
+
+    // Escala del nonio (50 divisiones en 49 mm)
+    for (let k = 0; k <= N; k++){
+      const mmPos = valorReal + k * (49 / 50);
+      const xp = xPos(mmPos, windowStart);
+      const largo = (k % 5 === 0) ? 20 : 13;
+      const esCoincidencia = revelado && k === i;
+      const color = esCoincidencia ? '#1B8F5A' : '#25302A';
+      const grosor = esCoincidencia ? 2.4 : 1.0;
+      partes.push(`<line x1="${xp.toFixed(1)}" y1="${Y_INTERFACE}" x2="${xp.toFixed(1)}" y2="${Y_INTERFACE + largo}" stroke="${color}" stroke-width="${grosor}"/>`);
+      
+      // Rótulos 0, 1, 2, ..., 9 cada 5 divisiones (0.10 mm)
+      if (k % 5 === 0){
+        const label = (k / 5) % 10;
+        partes.push(`<text x="${xp.toFixed(1)}" y="${Y_INTERFACE + largo + 12}" font-size="10.5" fill="#1A211D" text-anchor="middle">${label}</text>`);
+      }
+    }
+
+    // Rótulo de resolución "0.02 mm" en la parte inferior derecha del cursor
+    partes.push(`<text x="${(xSliderFin - 6).toFixed(1)}" y="${Y_SLIDER_BOT - 6}" font-size="10" font-weight="600" fill="#25302A" text-anchor="end">0.02 mm</text>`);
+
+    partes.push('</svg>');
+    return partes.join('');
+  }
+
+  function renderizar(revelado){
+    document.getElementById('svg-container').innerHTML = construirSVG(ejercicio, revelado);
+  }
+
+  // ---------- Interacción ----------
+  const inputRespuesta = document.getElementById('respuesta');
+  const btnVerificar = document.getElementById('btn-verificar');
+  const btnNuevo = document.getElementById('btn-nuevo');
+  const feedback = document.getElementById('feedback');
+  const desglose = document.getElementById('desglose');
+  const puntajeEl = document.getElementById('puntaje');
+
+  function nuevoEjercicio(){
+    generarEjercicio();
+    renderizar(false);
+    inputRespuesta.value = '';
+    feedback.classList.add('oculto');
+    desglose.classList.add('oculto');
+    inputRespuesta.focus();
+  }
+
+  function verificar(){
+    const raw = inputRespuesta.value.trim().replace(',', '.');
+    const val = Number(raw);
+    if (raw === '' || Number.isNaN(val)){
+      feedback.textContent = 'Ingrese una lectura numérica válida.';
+      feedback.className = 'feedback incorrecto';
+      return;
+    }
+
+    intentos++;
+    const correcto = Math.abs(val - ejercicio.valorReal) < 0.001;
+    if (correcto) aciertos++;
+
+    feedback.textContent = correcto
+      ? `Correcto: ${ejercicio.valorReal.toFixed(2)} mm`
+      : `Incorrecto. La lectura correcta es ${ejercicio.valorReal.toFixed(2)} mm`;
+    feedback.className = 'feedback ' + (correcto ? 'correcto' : 'incorrecto');
+
+    desglose.innerHTML =
+      `Escala principal (cero del nonio): <span class="valor">${ejercicio.msr} mm</span><br>` +
+      `División coincidente del nonio: <span class="marcador-nonio">${ejercicio.i}</span> × 0,02 mm = <span class="valor">${(ejercicio.i * LC).toFixed(2)} mm</span><br>` +
+      `Lectura total = ${ejercicio.msr} + ${(ejercicio.i * LC).toFixed(2)} = <span class="valor">${ejercicio.valorReal.toFixed(2)} mm</span>`;
+    desglose.classList.remove('oculto');
+
+    puntajeEl.textContent = `Aciertos: ${aciertos} / ${intentos}`;
+    renderizar(true);
+  }
+
+  btnVerificar.addEventListener('click', verificar);
+  btnNuevo.addEventListener('click', btnNuevoClick);
+  function btnNuevoClick(){ nuevoEjercicio(); }
+  inputRespuesta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      verificar();
+    }
+  });
+
+  nuevoEjercicio();
+})();
+</script>
+
+</body>
+</html>

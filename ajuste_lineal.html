@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajuste Lineal por Mínimos Cuadrados — Física I</title>
+<style>
+  :root{
+    --bg:#14181A; --card:#1B211D; --accent:#5FCB93; --accent-dim:#3E8C63;
+    --lcd-bg:#0D1712; --lcd-text:#5FCB93; --text:#E7ECE8; --text-dim:#9AA69E;
+    --border:#2B332D; --danger:#E27272; --warn:#E2B872;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:24px 16px 60px; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', 'Segoe UI', sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  h1{
+    font-family:'JetBrains Mono','Consolas',monospace; font-size:1.35rem;
+    color:var(--accent); text-align:center; margin:0 0 4px;
+    letter-spacing:0.02em;
+  }
+  .subtitle{color:var(--text-dim); font-size:0.85rem; margin-bottom:24px; text-align:center;}
+  .wrap{width:100%; max-width:920px; display:flex; flex-direction:column; gap:20px;}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:18px 20px;
+  }
+  .card h2{
+    font-family:'JetBrains Mono',monospace; font-size:0.95rem; color:var(--accent);
+    margin:0 0 14px; text-transform:uppercase; letter-spacing:0.05em;
+  }
+  label{display:block; font-size:0.8rem; color:var(--text-dim); margin-bottom:4px;}
+  input[type=text], input[type=number]{
+    width:100%; background:#10151280; border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 10px; font-family:'JetBrains Mono',monospace;
+    font-size:0.9rem;
+  }
+  input:focus{outline:none; border-color:var(--accent);}
+  .row{display:flex; gap:14px; flex-wrap:wrap;}
+  .row > div{flex:1; min-width:140px;}
+  table{width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:0.85rem;}
+  th, td{border:1px solid var(--border); padding:6px 8px; text-align:center;}
+  th{background:#20261F; color:var(--accent); font-weight:500;}
+  td input{padding:4px 6px; font-size:0.85rem; text-align:center;}
+  .btn{
+    font-family:'JetBrains Mono',monospace; font-size:0.85rem; padding:8px 16px;
+    background:transparent; border:1px solid var(--accent-dim); color:var(--accent);
+    border-radius:6px; cursor:pointer; transition:background .15s, border-color .15s;
+  }
+  .btn:hover{background:#1E2A22; border-color:var(--accent);}
+  .btn.small{padding:4px 10px; font-size:0.78rem;}
+  .btn.danger{border-color:#7A3B3B; color:var(--danger);}
+  .btn.danger:hover{background:#2A1616;}
+  .btn.primary{background:var(--accent); color:#0D1712; border-color:var(--accent); font-weight:600;}
+  .btn.primary:hover{background:#79E0AC;}
+  .btns{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .lcd{
+    background:var(--lcd-bg); border:1px solid #1A2B22; border-radius:8px;
+    padding:16px 18px; font-family:'JetBrains Mono',monospace; color:var(--lcd-text);
+    font-size:0.95rem; line-height:1.8; white-space:pre-wrap;
+  }
+  .lcd .eq{font-size:1.05rem; color:#8FE8B9;}
+  .lcd .label{color:#4E8A6C;}
+  .warn-box{
+    margin-top:10px; padding:8px 12px; border:1px solid #6B5424; background:#231B0C;
+    color:var(--warn); border-radius:6px; font-size:0.82rem;
+  }
+  .err-box{
+    margin-top:8px; padding:6px 10px; border:1px solid #6B2424; background:#230C0C;
+    color:var(--danger); border-radius:6px; font-size:0.8rem; display:none;
+  }
+  canvas{width:100%; height:400px; background:#10151280; border-radius:8px; border:1px solid var(--border); display:block;}
+  .raw{color:var(--text-dim); font-size:0.82rem;}
+  .col-del{width:36px;}
+  ::-webkit-scrollbar{height:8px; width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<h1>CALCULADORA DE AJUSTE LINEAL — Y = A + BX</h1>
+<div class="subtitle">Mínimos cuadrados · redondeo bancario · notación de ingeniería · Física I (UMSS)</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>1. Unidades</h2>
+    <div class="row">
+      <div>
+        <label>Unidad de X (vacío = adimensional)</label>
+        <input type="text" id="unidadX" placeholder="p. ej. s">
+      </div>
+      <div>
+        <label>Unidad de Y (vacío = adimensional)</label>
+        <input type="text" id="unidadY" placeholder="p. ej. m">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Datos (X, Y)</h2>
+    <table id="tablaDatos">
+      <thead><tr><th>n</th><th>X</th><th>Y</th><th class="col-del"></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="btns">
+      <button class="btn small" id="btnAgregar">+ Agregar punto</button>
+      <button class="btn small danger" id="btnLimpiar">Limpiar todo</button>
+    </div>
+    <div class="err-box" id="errBox"></div>
+  </div>
+
+  <div class="btns" style="justify-content:center;">
+    <button class="btn primary" id="btnCalcular">Calcular ajuste</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <h2>3. Resultados</h2>
+    <div id="tablaUsadaWrap" style="margin-bottom:14px;"></div>
+    <div class="lcd" id="lcdOut"></div>
+    <div id="warnBox"></div>
+  </div>
+
+  <div class="card" id="graphCard" style="display:none;">
+    <h2>4. Gráfica</h2>
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+/* =========================================================================
+   NÚCLEO DE REDONDEO — debe dar resultados numéricamente IDÉNTICOS a
+   ajuste_lineal.py (redondear_par / forzar_exponente / formatear_par).
+   Usamos aritmética decimal manual basada en STRINGS para evitar el ruido
+   binario de los floats, igual que Decimal(str(valor)) en Python.
+   ========================================================================= */
+
+// Redondea `valor` (float) a `decimales` posiciones decimales usando
+// redondeo bancario (round-half-to-even), operando sobre el string decimal
+// para no arrastrar ruido binario de IEEE-754.
+function redondeoBancario(valor, decimales) {
+  const factor = Math.pow(10, decimales);
+  // Representación decimal exacta vía toFixed a alta precisión, luego se
+  // aplica half-to-even manualmente sobre esa representación.
+  const signo = valor < 0 ? -1 : 1;
+  const abs = Math.abs(valor);
+  const str = abs.toFixed(Math.max(decimales + 12, 12));
+  const [entero, frac = ''] = str.split('.');
+  const fracPad = frac.padEnd(decimales + 12, '0');
+  const mantenidos = fracPad.slice(0, decimales);
+  const restoStr = fracPad.slice(decimales);
+  const base = BigInt(entero + mantenidos || '0');
+  let resultado;
+  const primerDigitoResto = restoStr.charAt(0) || '0';
+  const restoEsExactoMedio = primerDigitoResto === '5' && /^0*$/.test(restoStr.slice(1));
+  if (restoStr === '' || parseFloat('0.' + restoStr) < 0.5) {
+    resultado = base;
+  } else if (parseFloat('0.' + restoStr) > 0.5 && !restoEsExactoMedio) {
+    resultado = base + 1n;
+  } else if (restoEsExactoMedio) {
+    resultado = (base % 2n === 0n) ? base : base + 1n;
+  } else {
+    resultado = base + 1n;
+  }
+  const num = Number(resultado) / factor;
+  return signo * num;
+}
+
+// Formatea un valor ya redondeado con exactamente `decimales` decimales
+// (string fijo, sin notación científica).
+function fmtDecimales(valor, decimales) {
+  const v = redondeoBancario(valor, decimales);
+  return v.toFixed(decimales);
+}
+
+function mag10(x) {
+  return Math.floor(Math.log10(Math.abs(x)));
+}
+
+// Caso B/C interno: 1 <= error, decide entero o notación de ingeniería.
+function redondearEnteroOIngenieria(valor, error) {
+  const eRedondeado = redondeoBancario(error, 0);
+  if (eRedondeado >= 10) {
+    const mag = mag10(eRedondeado);
+    return redondearIngenieria(valor, eRedondeado, mag);
+  }
+  const vRedondeado = redondeoBancario(valor, 0);
+  return { v: vRedondeado, e: eRedondeado, decimales: 0, exp: false };
+}
+
+function redondearIngenieria(valor, error, mag) {
+  let exp = (mag >= 1 && mag < 3) ? 3 : (Math.floor(mag / 3) + 1) * 3;
+  while (true) {
+    const factor = Math.pow(10, exp);
+    const eNorm = error / factor;
+    const vNorm = valor / factor;
+    const magNorm = mag10(eNorm);
+    const eRed = redondeoBancario(eNorm, Math.max(0, -magNorm));
+    if (Math.abs(eRed) >= 10) { exp += 3; continue; }
+    const magEr = eRed !== 0 ? mag10(eRed) : 0;
+    const decimales = Math.max(0, -magEr);
+    const vRed = redondeoBancario(vNorm, decimales);
+    return { v: vRed, e: eRed, decimales, exp };
+  }
+}
+
+// Equivalente a redondear_par() de Python.
+function redondearPar(valor, error) {
+  if (error < 0) throw new Error('El error debe ser no negativo.');
+  if (error === 0) {
+    return { v: valor, e: 0, decimales: 0, exp: false };
+  }
+  const mag = mag10(error);
+  if (Math.abs(error) < 1) {
+    const eRedondeado = redondeoBancario(error, Math.max(0, -mag));
+    if (eRedondeado === 0) return { v: valor, e: 0, decimales: 0, exp: false };
+    if (Math.abs(eRedondeado) >= 1) return redondearEnteroOIngenieria(valor, eRedondeado);
+    const magEr = mag10(eRedondeado);
+    const decimales = Math.max(0, -magEr);
+    const vRedondeado = redondeoBancario(valor, decimales);
+    return { v: vRedondeado, e: eRedondeado, decimales, exp: false };
+  } else if (Math.abs(error) < 10) {
+    return redondearEnteroOIngenieria(valor, error);
+  } else {
+    return redondearIngenieria(valor, error, mag);
+  }
+}
+
+// Equivalente a forzar_exponente() de Python.
+function forzarExponente(valor, error, expObjetivo) {
+  const factor = Math.pow(10, expObjetivo);
+  const vNorm = valor / factor;
+  const eNorm = error / factor;
+  if (error === 0) return { v: vNorm, e: 0, decimales: 0 };
+  const magNorm = mag10(eNorm);
+  const eRed = redondeoBancario(eNorm, Math.max(0, -magNorm));
+  const magEr = eRed !== 0 ? mag10(eRed) : 0;
+  const decimales = Math.max(0, -magEr);
+  const vRed = redondeoBancario(vNorm, decimales);
+  return { v: vRed, e: eRed, decimales };
+}
+
+// Equivalente a formatear_columna_notacion() de Python: notación
+// científica de ingeniería (exponente múltiplo de 3) UNIFICADA para toda
+// una columna de datos, cuando hace falta (max_abs >= 1e4, o < 1e-3 si
+// es distinto de cero). Los decimales mostrados = decimales originales +
+// exponente, preservando la precisión con la que se ingresaron los datos.
+function formatearColumnaNotacion(valores, decimales) {
+  const noCero = valores.filter(v => v !== 0).map(v => Math.abs(v));
+  const maxAbs = noCero.length ? Math.max(...noCero) : 0;
+  const necesita = maxAbs !== 0 && (maxAbs >= 1e4 || maxAbs < 1e-3);
+
+  if (!necesita) {
+    return { strs: valores.map(v => fmtDecimales(v, decimales)), exp: null, decimales };
+  }
+
+  const mag = mag10(maxAbs);
+  const exp = 3 * Math.floor(mag / 3);
+  const decimalesNorm = Math.max(0, decimales + exp);
+  const factor = Math.pow(10, exp);
+  const strs = valores.map(v => fmtDecimales(v / factor, decimalesNorm));
+  return { strs, exp, decimales: decimalesNorm };
+}
+
+function formatearPar(v, e, decimales, exp) {
+  const vStr = fmtDecimales(v, decimales);
+  const eStr = fmtDecimales(e, decimales);
+  if (exp === false) return `${vStr} ± ${eStr}`;
+  return `(${vStr} ± ${eStr}) × 10^${exp}`;
+}
+
+// Equivalente a formatear_resultados(): redondea A y B, unifica exponente
+// de ingeniería (el MAYOR de los dos) si al menos uno lo requiere.
+function formatearResultados(A, eA, B, eB) {
+  let rA = redondearPar(A, eA);
+  let rB = redondearPar(B, eB);
+  const exps = [rA.exp, rB.exp].filter(x => x !== false);
+  let expFinal = false;
+  if (exps.length) {
+    expFinal = Math.max(...exps);
+    if (rA.exp !== expFinal) rA = { ...forzarExponente(A, eA, expFinal) };
+    if (rB.exp !== expFinal) rB = { ...forzarExponente(B, eB, expFinal) };
+  }
+  const A_fmt = formatearPar(rA.v, rA.e, rA.decimales, expFinal);
+  const B_fmt = formatearPar(rB.v, rB.e, rB.decimales, expFinal);
+  return { A_fmt, B_fmt, vA: rA.v, decA: rA.decimales, vB: rB.v, decB: rB.decimales, expFinal };
+}
+
+/* =========================================================================
+   AJUSTE LINEAL — fórmulas cerradas de mínimos cuadrados (idénticas a
+   calcular_lineal() en Python / scipy.stats.linregress)
+   ========================================================================= */
+
+function calcularLineal(x, y) {
+  const n = x.length;
+  if (n < 2) throw new Error('Se requieren al menos 2 puntos para el ajuste.');
+
+  let Sx = 0, Sy = 0, Sxx = 0, Sxy = 0, Syy = 0;
+  for (let i = 0; i < n; i++) {
+    Sx += x[i]; Sy += y[i]; Sxx += x[i] * x[i]; Sxy += x[i] * y[i]; Syy += y[i] * y[i];
+  }
+  const delta = n * Sxx - Sx * Sx;
+  if (delta === 0) throw new Error('Los valores de X son todos iguales; no se puede ajustar una recta.');
+
+  const A = (Sy * Sxx - Sxy * Sx) / delta;
+  const B = (n * Sxy - Sx * Sy) / delta;
+
+  let sumaResiduos2 = 0;
+  for (let i = 0; i < n; i++) {
+    const res = y[i] - (A + B * x[i]);
+    sumaResiduos2 += res * res;
+  }
+  const s2 = n > 2 ? sumaResiduos2 / (n - 2) : 0;
+
+  const errorB = Math.sqrt(n * s2 / delta);
+  const errorA = Math.sqrt(s2 * Sxx / delta);
+
+  const denomR = Math.sqrt((n * Sxx - Sx * Sx) * (n * Syy - Sy * Sy));
+  const r = denomR !== 0 ? (n * Sxy - Sx * Sy) / denomR : NaN;
+
+  return { A, B, r, r2: r * r, errorA, errorB };
+}
+
+/* =========================================================================
+   INTERFAZ
+   ========================================================================= */
+
+const tbody = document.querySelector('#tablaDatos tbody');
+const errBox = document.getElementById('errBox');
+
+function filaHTML(x = '', y = '') {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="idx"></td>
+    <td><input type="text" class="inX" value="${x}" inputmode="decimal"></td>
+    <td><input type="text" class="inY" value="${y}" inputmode="decimal"></td>
+    <td><button class="btn small danger btnDel">×</button></td>`;
+  tr.querySelector('.btnDel').addEventListener('click', () => { tr.remove(); renumerar(); });
+  return tr;
+}
+
+function renumerar() {
+  [...tbody.children].forEach((tr, i) => { tr.querySelector('.idx').textContent = i + 1; });
+}
+
+function agregarFila(x = '', y = '') {
+  tbody.appendChild(filaHTML(x, y));
+  renumerar();
+}
+
+// -------------------------------------------------------------------------
+// Navegación tipo hoja de cálculo en la tabla de entrada: flechas
+// arriba/abajo/izquierda/derecha y Enter, igual que en propagacion_errores.html.
+// - Arriba/Abajo: misma columna, fila anterior/siguiente (Abajo en la
+//   última fila agrega una fila nueva, como Enter).
+// - Izquierda/Derecha: mueven el cursor dentro del texto; al llegar al
+//   borde de la celda saltan a la celda vecina (X <-> Y, entre filas).
+// - Enter: confirma y baja a la misma columna de la fila siguiente.
+function enfocarCelda(filaIdx, esX, posicion) {
+  let filas = [...tbody.children];
+  if (filaIdx < 0) return;
+  if (filaIdx >= filas.length) {
+    agregarFila();
+    filas = [...tbody.children];
+  }
+  const input = filas[filaIdx].querySelector(esX ? '.inX' : '.inY');
+  input.focus();
+  const p = posicion === 'inicio' ? 0 : input.value.length;
+  input.setSelectionRange(p, p);
+}
+
+tbody.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (!t.classList || !(t.classList.contains('inX') || t.classList.contains('inY'))) return;
+  const tr = t.closest('tr');
+  const filas = [...tbody.children];
+  const filaIdx = filas.indexOf(tr);
+  const esX = t.classList.contains('inX');
+  const alInicio = t.selectionStart === 0 && t.selectionEnd === 0;
+  const alFinal = t.selectionStart === t.value.length && t.selectionEnd === t.value.length;
+
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    enfocarCelda(filaIdx - 1, esX, 'final');
+  } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+    e.preventDefault();
+    enfocarCelda(filaIdx + 1, esX, 'final');
+  } else if (e.key === 'ArrowLeft' && alInicio) {
+    e.preventDefault();
+    if (esX) { if (filaIdx > 0) enfocarCelda(filaIdx - 1, false, 'final'); }
+    else enfocarCelda(filaIdx, true, 'final');
+  } else if (e.key === 'ArrowRight' && alFinal) {
+    e.preventDefault();
+    if (esX) enfocarCelda(filaIdx, false, 'inicio');
+    else enfocarCelda(filaIdx + 1, true, 'inicio');
+  }
+});
+
+// Datos iniciales de ejemplo (mismo criterio que la versión de teclado:
+// mínimo 2 puntos)
+agregarFila('1.0', '2.1');
+agregarFila('2.0', '3.9');
+agregarFila('3.0', '6.2');
+agregarFila('4.0', '7.8');
+
+document.getElementById('btnAgregar').addEventListener('click', () => agregarFila());
+document.getElementById('btnLimpiar').addEventListener('click', () => {
+  tbody.innerHTML = ''; agregarFila(); agregarFila();
+});
+
+function contarDecimales(str) {
+  const s = str.trim();
+  return s.includes('.') ? s.split('.')[1].length : 0;
+}
+
+// Renderiza la gráfica con Canvas 2D puro (sin librerías externas, para
+// que la app funcione completamente sin conexión a internet).
+function dibujarGrafica(xVals, yVals, A, B, eqTexto, rTexto, unidadX, unidadY) {
+  const canvas = document.getElementById('chart');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 640;
+  const cssH = canvas.clientHeight || 400;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const margen = { izq: 62, der: 20, arriba: 46, abajo: 46 };
+  const anchoPlot = cssW - margen.izq - margen.der;
+  const altoPlot = cssH - margen.arriba - margen.abajo;
+
+  let xMin = Math.min(...xVals), xMax = Math.max(...xVals);
+  let yMin = Math.min(...yVals), yMax = Math.max(...yVals);
+  const xPad = (xMax - xMin) * 0.1 || 1;
+  const yPad = (yMax - yMin) * 0.1 || 1;
+  xMin -= xPad; xMax += xPad; yMin -= yPad; yMax += yPad;
+
+  const px = (x) => margen.izq + ((x - xMin) / (xMax - xMin)) * anchoPlot;
+  const py = (y) => margen.arriba + altoPlot - ((y - yMin) / (yMax - yMin)) * altoPlot;
+
+  // Grilla
+  ctx.strokeStyle = '#2B332D';
+  ctx.lineWidth = 1;
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#9AA69E';
+  const nDiv = 6;
+  for (let i = 0; i <= nDiv; i++) {
+    const xv = xMin + (i / nDiv) * (xMax - xMin);
+    const xpix = px(xv);
+    ctx.beginPath(); ctx.moveTo(xpix, margen.arriba); ctx.lineTo(xpix, margen.arriba + altoPlot); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillText(xv.toFixed(2), xpix, margen.arriba + altoPlot + 16);
+
+    const yv = yMin + (i / nDiv) * (yMax - yMin);
+    const ypix = py(yv);
+    ctx.beginPath(); ctx.moveTo(margen.izq, ypix); ctx.lineTo(margen.izq + anchoPlot, ypix); ctx.stroke();
+    ctx.textAlign = 'right'; ctx.fillText(yv.toFixed(2), margen.izq - 8, ypix + 4);
+  }
+
+  // Ejes
+  ctx.strokeStyle = '#4E5A50';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(margen.izq, margen.arriba, anchoPlot, altoPlot);
+
+  // Etiquetas de ejes
+  ctx.fillStyle = '#9AA69E';
+  ctx.textAlign = 'center';
+  ctx.fillText(unidadX !== 'adimensional' ? `X [${unidadX}]` : 'X', margen.izq + anchoPlot / 2, cssH - 8);
+  ctx.save();
+  ctx.translate(16, margen.arriba + altoPlot / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText(unidadY !== 'adimensional' ? `Y [${unidadY}]` : 'Y', 0, 0);
+  ctx.restore();
+
+  // Recta ajustada
+  ctx.strokeStyle = '#E2B872';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px(xMin), py(A + B * xMin));
+  ctx.lineTo(px(xMax), py(A + B * xMax));
+  ctx.stroke();
+
+  // Puntos de datos
+  ctx.fillStyle = '#5FCB93';
+  xVals.forEach((x, i) => {
+    ctx.beginPath();
+    ctx.arc(px(x), py(yVals[i]), 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Título con la ecuación
+  ctx.fillStyle = '#8FE8B9';
+  ctx.font = '12px JetBrains Mono, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(eqTexto, margen.izq, 18);
+  ctx.fillText(rTexto, margen.izq, 34);
+
+  // Leyenda
+  ctx.textAlign = 'left';
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillStyle = '#5FCB93'; ctx.fillText('● Datos', cssW - margen.der - 150, 18);
+  ctx.strokeStyle = '#E2B872'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cssW - margen.der - 60, 15); ctx.lineTo(cssW - margen.der - 40, 15); ctx.stroke();
+  ctx.fillStyle = '#E2B872'; ctx.fillText('Ajuste', cssW - margen.der - 36, 18);
+}
+
+document.getElementById('btnCalcular').addEventListener('click', () => {
+  errBox.style.display = 'none';
+  const filas = [...tbody.querySelectorAll('tr')];
+  const xVals = [], yVals = [], xStrs = [], yStrs = [];
+
+  for (const tr of filas) {
+    const xs = tr.querySelector('.inX').value.trim();
+    const ys = tr.querySelector('.inY').value.trim();
+    if (xs === '' || ys === '') continue;
+    const xv = parseFloat(xs.replace(',', '.'));
+    const yv = parseFloat(ys.replace(',', '.'));
+    if (!Number.isFinite(xv) || !Number.isFinite(yv)) {
+      errBox.textContent = `Valor no numérico: "${xs}" / "${ys}".`;
+      errBox.style.display = 'block';
+      return;
+    }
+    xVals.push(xv); yVals.push(yv); xStrs.push(xs); yStrs.push(ys);
+  }
+
+  if (xVals.length < 2) {
+    errBox.textContent = 'Se requieren al menos 2 puntos con X e Y para ajustar la recta.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const unidadX = document.getElementById('unidadX').value.trim() || 'adimensional';
+  const unidadY = document.getElementById('unidadY').value.trim() || 'adimensional';
+
+  let res;
+  try {
+    res = calcularLineal(xVals, yVals);
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const { A_fmt, B_fmt, vA, decA, vB, decB, expFinal } =
+    formatearResultados(res.A, res.errorA, res.B, res.errorB);
+
+  const xDec = Math.max(...xStrs.map(contarDecimales));
+  const yDec = Math.max(...yStrs.map(contarDecimales));
+
+  // Tabla de datos utilizados — notación científica unificada por columna
+  // cuando hace falta (igual criterio que mostrar_tabla_datos() en Python).
+  const colX = formatearColumnaNotacion(xVals, xDec);
+  const colY = formatearColumnaNotacion(yVals, yDec);
+  const headerX = 'X' + (colX.exp !== null ? ` (×10^${colX.exp})` : '') +
+                  (unidadX !== 'adimensional' ? ` (${unidadX})` : '');
+  const headerY = 'Y' + (colY.exp !== null ? ` (×10^${colY.exp})` : '') +
+                  (unidadY !== 'adimensional' ? ` (${unidadY})` : '');
+  let tablaHTML = `<table><thead><tr><th>n</th><th>${headerX}</th><th>${headerY}</th></tr></thead><tbody>`;
+  xVals.forEach((_, i) => {
+    tablaHTML += `<tr><td>${i + 1}</td><td>${colX.strs[i]}</td><td>${colY.strs[i]}</td></tr>`;
+  });
+  tablaHTML += '</tbody></table>';
+  document.getElementById('tablaUsadaWrap').innerHTML = tablaHTML;
+
+  let lcd = '';
+  lcd += `<span class="label">Datos:</span> n = ${xVals.length}\n\n`;
+  lcd += `<span class="label">1) Valores sin redondear</span>\n`;
+  lcd += `  A       = ${res.A.toFixed(10)}\n`;
+  lcd += `  error_A = ${res.errorA.toFixed(10)}\n`;
+  lcd += `  B       = ${res.B.toFixed(10)}\n`;
+  lcd += `  error_B = ${res.errorB.toFixed(10)}\n\n`;
+  lcd += `<span class="label">2) Valores redondeados</span>\n`;
+  lcd += `  A = ${A_fmt}\n`;
+  lcd += `  B = ${B_fmt}\n\n`;
+  lcd += `<span class="label">Coeficientes</span>\n`;
+  lcd += `  r  = ${res.r.toFixed(6)}\n`;
+  lcd += `  R² = ${res.r2.toFixed(6)}\n\n`;
+  lcd += `<span class="eq">3) Y = ${A_fmt} + (${B_fmt})X</span>`;
+
+  if (unidadX !== 'adimensional' || unidadY !== 'adimensional') {
+    lcd += `\n\n<span class="label">4) Con unidades</span>\n`;
+    if (unidadX !== 'adimensional' && unidadY !== 'adimensional') {
+      if (unidadX === unidadY) {
+        lcd += `  Y [${unidadY}] = ${A_fmt} [${unidadY}] + (${B_fmt}) × X [${unidadX}]`;
+      } else {
+        lcd += `  Y [${unidadY}] = ${A_fmt} [${unidadY}] + (${B_fmt}) [${unidadY}/${unidadX}] × X [${unidadX}]`;
+      }
+    } else if (unidadY !== 'adimensional') {
+      lcd += `  Y [${unidadY}] = ${A_fmt} [${unidadY}] + (${B_fmt}) [${unidadY}] × X`;
+    } else {
+      lcd += `  Y = ${A_fmt} + (${B_fmt}) [1/${unidadX}] × X [${unidadX}]`;
+    }
+  }
+
+  document.getElementById('lcdOut').innerHTML = lcd;
+
+  const warnBox = document.getElementById('warnBox');
+  warnBox.innerHTML = '';
+  if (Number.isFinite(res.r2) && res.r2 < 0.90) {
+    const w = document.createElement('div');
+    w.className = 'warn-box';
+    w.textContent = 'Aviso: R² < 0.90 — el modelo lineal podría no ser el más adecuado para estos datos.';
+    warnBox.appendChild(w);
+  }
+
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('graphCard').style.display = 'block';
+
+  // Gráfica — la ecuación mostrada usa los valores NUMÉRICOS ya
+  // redondeados/unificados (vA, vB), nunca texto parseado del resultado.
+  const eqTexto = expFinal === false
+    ? `Y = ${fmtDecimales(vA, decA)} + (${fmtDecimales(vB, decB)})X`
+    : `Y = (${fmtDecimales(vA, decA)} + (${fmtDecimales(vB, decB)})X) × 10^${expFinal}`;
+  const rTexto = `r = ${res.r.toFixed(6)}`;
+
+  dibujarGrafica(xVals, yVals, res.A, res.B, eqTexto, rTexto, unidadX, unidadY);
+});
+
+window.addEventListener('resize', () => {
+  const graphCard = document.getElementById('graphCard');
+  if (graphCard.style.display !== 'none') {
+    document.getElementById('btnCalcular').click();
+  }
+});
+</script>
+</body>
+</html>
