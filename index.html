@@ -1,1 +1,228 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LABFIS — Herramientas de Física I</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+  }
+
+  .contenedor{
+    width:100%;
+    max-width:640px;
+  }
+
+  header.masthead{
+    margin-bottom:2rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+
+  h1{
+    font-size:26px;
+    font-weight:600;
+    margin:0 0 0.4rem;
+    letter-spacing:-0.01em;
+  }
+
+  header.masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+    max-width:56ch;
+  }
+
+  .grupo{
+    margin-bottom:1.6rem;
+  }
+
+  .grupo-titulo{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 0.7rem;
+    padding-left:0.1rem;
+  }
+
+  .tarjeta{
+    display:flex;
+    align-items:center;
+    gap:0.9rem;
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:0.95rem 1.1rem;
+    margin-bottom:0.6rem;
+    text-decoration:none;
+    color:var(--ink);
+    transition:background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+  }
+  .tarjeta:hover{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+  }
+  .tarjeta:active{ transform:translateY(1px); }
+
+  .tarjeta .icono{
+    flex-shrink:0;
+    width:34px;
+    height:34px;
+    border-radius:5px;
+    background:var(--surface-2);
+    border:1px solid var(--card-border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--font-mono);
+    font-size:14px;
+    font-weight:700;
+    color:var(--accent);
+  }
+
+  .tarjeta .texto{ flex:1; min-width:0; }
+
+  .tarjeta .nombre{
+    font-size:14.5px;
+    font-weight:600;
+    margin:0 0 0.15rem;
+  }
+
+  .tarjeta .desc{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin:0;
+  }
+
+  .tarjeta .flecha{
+    flex-shrink:0;
+    font-family:var(--font-mono);
+    color:var(--ink-faint);
+    font-size:16px;
+  }
+
+  footer.pie{
+    margin-top:2rem;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+  footer.pie a{ color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="contenedor">
+
+  <header class="masthead">
+    <p class="eyebrow">LABFIS · UMSS</p>
+    <h1>Herramientas de Física I</h1>
+    <p>Programas web interactivos para mediciones, cifras significativas, propagación de errores y lectura de instrumentos. Funcionan sin conexión una vez cargados.</p>
+  </header>
+
+  <section class="grupo">
+    <p class="grupo-titulo">Mediciones y estadística</p>
+
+    <a class="tarjeta" href="serie_mediciones.html">
+      <span class="icono">M</span>
+      <span class="texto">
+        <p class="nombre">Serie de mediciones</p>
+        <p class="desc">Media, desviación estándar, error de la media</p>
+      </span>
+      <span class="flecha">→</span>
+    </a>
+
+    <a class="tarjeta" href="cifras_significativas.html">
+      <span class="icono">C</span>
+      <span class="texto">
+        <p class="nombre">Cifras significativas</p>
+        <p class="desc">Redondeo bancario a N cifras significativas</p>
+      </span>
+      <span class="flecha">→</span>
+    </a>
+
+    <a class="tarjeta" href="propagacion_errores.html">
+      <span class="icono">P</span>
+      <span class="texto">
+        <p class="nombre">Propagación de errores</p>
+        <p class="desc">Derivadas parciales y reparto de contribuciones</p>
+      </span>
+      <span class="flecha">→</span>
+    </a>
+
+    <a class="tarjeta" href="ajuste_lineal.html">
+      <span class="icono">A</span>
+      <span class="texto">
+        <p class="nombre">Ajuste lineal (mínimos cuadrados)</p>
+        <p class="desc">Y = A + BX, con errores de A y B</p>
+      </span>
+      <span class="flecha">→</span>
+    </a>
+  </section>
+
+  <section class="grupo">
+    <p class="grupo-titulo">Instrumentos de medición</p>
+
+    <a class="tarjeta" href="calibrador_1_20mm.html">
+      <span class="icono">V</span>
+      <span class="texto">
+        <p class="nombre">Calibrador vernier — 1/20 mm</p>
+        <p class="desc">Simulador de práctica de lectura, 20 divisiones</p>
+      </span>
+      <span class="flecha">→</span>
+    </a>
+
+    <a class="tarjeta" href="calibrador_1_50mm.html">
+      <span class="icono">V</span>
+      <span class="texto">
+        <p class="nombre">Calibrador vernier — 1/50 mm</p>
+        <p class="desc">Simulador de práctica de lectura, 50 divisiones</p>
+      </span>
+      <span class="flecha">→</span>
+    </a>
+  </section>
+
+  <footer class="pie">LABFIS · Física I · UMSS — <a href="https://github.com/xonar7/LABFIS">repositorio en GitHub</a></footer>
+</div>
+</body>
+</html>
