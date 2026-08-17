@@ -107,8 +107,13 @@
     </table>
     <div class="btns">
       <button class="btn small" id="btnAgregar">+ Agregar punto</button>
+      <button class="btn small" id="btnCientifica" title="Inserta &quot;e&quot; en la celda activa, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
       <button class="btn small danger" id="btnLimpiar">Limpiar todo</button>
     </div>
+    <p style="font-size:12px; opacity:0.7; margin:6px 0 0;">
+      Para notación científica escribí, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado numérico
+      del celular no hay tecla "e": tocá el campo y usá el botón ×10ⁿ (e) para insertarla.
+    </p>
     <div class="err-box" id="errBox"></div>
   </div>
 
@@ -209,6 +214,21 @@ function redondearIngenieria(valor, error, mag) {
   }
 }
 
+// Caso A-bis: error < 0.001 -> notación de ingeniería con exponente
+// NEGATIVO múltiplo de 3, elegido para que el error normalizado quede
+// en el rango [1, 1000) (equivalente a _redondear_par_ingenieria_chica()
+// de Python). No hace falta bucle de reintento: `error` ya llega
+// redondeado a 1 cifra significativa.
+function redondearIngenieriaChica(valor, error, magEr) {
+  const exp = 3 * Math.floor(magEr / 3);
+  const factor = Math.pow(10, exp);
+  const magNorm = magEr - exp; // queda en {0, 1, 2} -> mantisa en [1, 1000)
+  const decimales = Math.max(0, -magNorm);
+  const eNorm = redondeoBancario(error / factor, decimales);
+  const vNorm = redondeoBancario(valor / factor, decimales);
+  return { v: vNorm, e: eNorm, decimales, exp };
+}
+
 // Equivalente a redondear_par() de Python.
 function redondearPar(valor, error) {
   if (error < 0) throw new Error('El error debe ser no negativo.');
@@ -221,6 +241,7 @@ function redondearPar(valor, error) {
     if (eRedondeado === 0) return { v: valor, e: 0, decimales: 0, exp: false };
     if (Math.abs(eRedondeado) >= 1) return redondearEnteroOIngenieria(valor, eRedondeado);
     const magEr = mag10(eRedondeado);
+    if (magEr <= -4) return redondearIngenieriaChica(valor, eRedondeado, magEr);
     const decimales = Math.max(0, -magEr);
     const vRedondeado = redondeoBancario(valor, decimales);
     return { v: vRedondeado, e: eRedondeado, decimales, exp: false };
@@ -337,15 +358,32 @@ function filaHTML(x = '', y = '') {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td class="idx"></td>
-    <td><input type="text" class="inX" value="${x}" inputmode="decimal"></td>
-    <td><input type="text" class="inY" value="${y}" inputmode="decimal"></td>
+    <td><input type="text" class="inX" value="${x}" inputmode="decimal" enterkeyhint="next"></td>
+    <td><input type="text" class="inY" value="${y}" inputmode="decimal" enterkeyhint="next"></td>
     <td><button class="btn small danger btnDel">×</button></td>`;
   tr.querySelector('.btnDel').addEventListener('click', () => { tr.remove(); renumerar(); });
   return tr;
 }
 
+// El `tabindex` se recalcula por COLUMNA (todas las celdas de X en orden,
+// luego todas las de Y) en vez de seguir el orden natural del DOM (que es
+// por FILA: X,Y,X,Y...). Esto es necesario porque en el teclado virtual
+// de los celulares, el botón "Enter"/"Siguiente" casi nunca dispara un
+// evento de teclado real que nuestro handler pueda interceptar: el propio
+// navegador mueve el foco al siguiente elemento enfocable según el orden
+// de tabulación. Sin este ajuste, "Enter" saltaba de X a la Y de la misma
+// fila (a la derecha); con el tabindex por columna, salta a la fila
+// siguiente de la MISMA variable (hacia abajo), que es el comportamiento
+// esperado tanto en escritorio (flechas/Enter, manejado en JS más abajo)
+// como en el teclado virtual del celular (que no pasa por ese JS).
 function renumerar() {
-  [...tbody.children].forEach((tr, i) => { tr.querySelector('.idx').textContent = i + 1; });
+  const filas = [...tbody.children];
+  const n = filas.length;
+  filas.forEach((tr, i) => {
+    tr.querySelector('.idx').textContent = i + 1;
+    tr.querySelector('.inX').tabIndex = i + 1;
+    tr.querySelector('.inY').tabIndex = n + i + 1;
+  });
 }
 
 function agregarFila(x = '', y = '') {
@@ -389,6 +427,7 @@ tbody.addEventListener('keydown', (e) => {
     enfocarCelda(filaIdx - 1, esX, 'final');
   } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
     e.preventDefault();
+    if (e.key === 'Enter') enterYaManejado = true;
     enfocarCelda(filaIdx + 1, esX, 'final');
   } else if (e.key === 'ArrowLeft' && alInicio) {
     e.preventDefault();
@@ -398,6 +437,32 @@ tbody.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (esX) enfocarCelda(filaIdx, false, 'inicio');
     else enfocarCelda(filaIdx + 1, true, 'inicio');
+  }
+});
+
+// En el celular, el botón "Enter/Ir" del teclado virtual casi nunca
+// dispara un 'keydown' real (el que sí intercepta el handler de arriba,
+// para escritorio) -- en cambio, para un <input> de una sola línea, el
+// navegador dispara un evento 'input' con inputType 'insertLineBreak'.
+// Sin escuchar esto, el celular terminaba resolviendo el avance con su
+// propio criterio (moviendo el foco a la celda siguiente en el DOM, es
+// decir a la derecha) en vez de bajar de fila. Se maneja igual que
+// Enter en escritorio: baja a la misma columna de la fila siguiente.
+// `enterYaManejado` evita un doble salto de fila si, en algún
+// dispositivo, llegaran a dispararse el 'keydown' de Enter Y este
+// evento 'input' para la misma pulsación.
+let enterYaManejado = false;
+tbody.addEventListener('input', (e) => {
+  const t = e.target;
+  if (!t.classList || !(t.classList.contains('inX') || t.classList.contains('inY'))) return;
+  if (e.inputType === 'insertLineBreak') {
+    if (t.value.includes('\n')) t.value = t.value.replace(/\n/g, '');
+    if (enterYaManejado) { enterYaManejado = false; return; }
+    const tr = t.closest('tr');
+    const filas = [...tbody.children];
+    const filaIdx = filas.indexOf(tr);
+    const esX = t.classList.contains('inX');
+    enfocarCelda(filaIdx + 1, esX, 'final');
   }
 });
 
@@ -413,13 +478,60 @@ document.getElementById('btnLimpiar').addEventListener('click', () => {
   tbody.innerHTML = ''; agregarFila(); agregarFila();
 });
 
+// Rastrea la última celda de datos enfocada, para saber dónde insertar
+// "e" con el botón ×10ⁿ (necesario en el celular: el teclado numérico de
+// inputmode="decimal" no tiene la letra "e" ni el símbolo "^").
+let celdaActiva = null;
+tbody.addEventListener('focusin', (e) => {
+  const t = e.target;
+  if (t.classList && (t.classList.contains('inX') || t.classList.contains('inY'))) {
+    celdaActiva = t;
+  }
+});
+
+document.getElementById('btnCientifica').addEventListener('click', () => {
+  if (!celdaActiva) return;
+  const val = celdaActiva.value;
+  if (/[eE]/.test(val)) return; // ya tiene notación científica
+  const pos = celdaActiva.selectionStart ?? val.length;
+  celdaActiva.value = val.slice(0, pos) + 'e' + val.slice(pos);
+  celdaActiva.focus();
+  celdaActiva.setSelectionRange(pos + 1, pos + 1);
+});
+
+// Cuenta los decimales "efectivos" de un número ingresado como texto,
+// incluyendo notación científica: "1.5e-3" equivale a una precisión de
+// 4 decimales (0.0015) -- decimales de la mantisa MENOS el exponente.
 function contarDecimales(str) {
   const s = str.trim();
-  return s.includes('.') ? s.split('.')[1].length : 0;
+  const m = s.match(/[eE]/);
+  const mantisa = m ? s.slice(0, m.index) : s;
+  const exp = m ? (parseInt(s.slice(m.index + 1), 10) || 0) : 0;
+  const decMantisa = mantisa.includes('.') ? mantisa.split('.')[1].length : 0;
+  return Math.max(0, decMantisa - exp);
 }
 
 // Renderiza la gráfica con Canvas 2D puro (sin librerías externas, para
 // que la app funcione completamente sin conexión a internet).
+// Envuelve un texto en varias líneas según el ancho máximo en píxeles
+// (medido con la fuente actual del contexto), partiendo por espacios.
+function envolverTexto(ctx, texto, anchoMax) {
+  const palabras = texto.split(' ');
+  const lineas = [];
+  let actual = '';
+  for (const palabra of palabras) {
+    const prueba = actual ? actual + ' ' + palabra : palabra;
+    if (actual && ctx.measureText(prueba).width > anchoMax) {
+      lineas.push(actual);
+      actual = palabra;
+    } else {
+      actual = prueba;
+    }
+  }
+  if (actual) lineas.push(actual);
+  return lineas;
+}
+
 function dibujarGrafica(xVals, yVals, A, B, eqTexto, rTexto, unidadX, unidadY) {
   const canvas = document.getElementById('chart');
   const dpr = window.devicePixelRatio || 1;
@@ -432,6 +544,18 @@ function dibujarGrafica(xVals, yVals, A, B, eqTexto, rTexto, unidadX, unidadY) {
   ctx.clearRect(0, 0, cssW, cssH);
 
   const margen = { izq: 62, der: 20, arriba: 46, abajo: 46 };
+
+  // La leyenda vive siempre arriba a la derecha (ver más abajo). Si la
+  // ecuación tiene muchos decimales, el texto se ENVUELVE en varias
+  // líneas -- crece hacia abajo, nunca hacia la derecha -- para que no
+  // pueda invadir nunca la columna reservada a la leyenda, sin importar
+  // cuántos decimales tenga.
+  const legX = cssW - margen.der - 90;
+  const anchoMaxEq = Math.max(90, legX - margen.izq - 14);
+  ctx.font = '12px JetBrains Mono, monospace';
+  const lineasEq = envolverTexto(ctx, eqTexto, anchoMaxEq);
+  margen.arriba = Math.max(46, 14 + lineasEq.length * 14 + 16);
+
   const anchoPlot = cssW - margen.izq - margen.der;
   const altoPlot = cssH - margen.arriba - margen.abajo;
 
@@ -493,20 +617,26 @@ function dibujarGrafica(xVals, yVals, A, B, eqTexto, rTexto, unidadX, unidadY) {
     ctx.fill();
   });
 
-  // Título con la ecuación
+  // Título con la ecuación (envuelta en varias líneas si hace falta)
   ctx.fillStyle = '#8FE8B9';
   ctx.font = '12px JetBrains Mono, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(eqTexto, margen.izq, 18);
-  ctx.fillText(rTexto, margen.izq, 34);
+  lineasEq.forEach((linea, i) => ctx.fillText(linea, margen.izq, 18 + i * 14));
+  ctx.fillText(rTexto, margen.izq, 18 + lineasEq.length * 14 + 16);
 
-  // Leyenda
+  // Leyenda apilada verticalmente (Ajuste arriba, Datos abajo — mismo
+  // orden que la versión Python) en la esquina superior derecha.
   ctx.textAlign = 'left';
   ctx.font = '11px JetBrains Mono, monospace';
-  ctx.fillStyle = '#5FCB93'; ctx.fillText('● Datos', cssW - margen.der - 150, 18);
-  ctx.strokeStyle = '#E2B872'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(cssW - margen.der - 60, 15); ctx.lineTo(cssW - margen.der - 40, 15); ctx.stroke();
-  ctx.fillStyle = '#E2B872'; ctx.fillText('Ajuste', cssW - margen.der - 36, 18);
+  ctx.strokeStyle = '#E2B872';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(legX, 14); ctx.lineTo(legX + 20, 14); ctx.stroke();
+  ctx.fillStyle = '#E2B872';
+  ctx.fillText('Ajuste', legX + 26, 18);
+
+  ctx.fillStyle = '#5FCB93';
+  ctx.beginPath(); ctx.arc(legX + 10, 30, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillText('Datos', legX + 26, 34);
 }
 
 document.getElementById('btnCalcular').addEventListener('click', () => {
