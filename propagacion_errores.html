@@ -175,6 +175,32 @@
     line-height:1.7;
   }
 
+  .ejemplos-func{ margin-top:0.8rem; }
+  .ejemplos-label{
+    display:block;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    margin-bottom:0.4rem;
+  }
+  .ejemplos-lista{ display:flex; flex-wrap:wrap; gap:0.4rem; }
+  .chip-ejemplo{
+    font-family:var(--font-mono);
+    font-size:12px;
+    padding:0.35rem 0.6rem;
+    border-radius:4px;
+    border:1px dashed var(--card-border);
+    background:var(--surface-2);
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .chip-ejemplo:hover{
+    background:var(--accent-soft);
+    border-color:var(--accent);
+    border-style:solid;
+    color:var(--ink);
+  }
+
   .mensaje{
     font-size:12.5px;
     margin-top:0.6rem;
@@ -276,23 +302,6 @@
   <section class="panel">
     <div class="panel-head">
       <span class="paso-badge">PASO 01</span>
-      <h2>Variables medidas</h2>
-    </div>
-    <div id="lista-vars"></div>
-    <div class="acciones">
-      <button type="button" id="btn-agregar-var">+ Agregar variable</button>
-      <button type="button" id="btn-cientifica" title="Inserta &quot;e&quot; en la celda activa (Valor o Error), p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
-      <button type="button" id="btn-ejemplo">Cargar ejemplo</button>
-    </div>
-    <p class="hint" style="font-size:12px; opacity:0.7; margin:0.5rem 0 0;">
-      Para notación científica escribí, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado
-      numérico del celular no hay tecla "e": tocá el campo Valor o Error y usá el botón ×10ⁿ (e).
-    </p>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <span class="paso-badge">PASO 02</span>
       <h2>Función</h2>
     </div>
     <label class="campo-label" for="funcion">f = </label>
@@ -301,6 +310,31 @@
       Potencias: x**2 o x^2 &nbsp;·&nbsp; Raíz: sqrt(x) &nbsp;·&nbsp; Constantes: pi, e<br>
       Funciones: sin, cos, tan, asin, acos, atan, exp, ln, log10, abs
     </div>
+    <div class="ejemplos-func">
+      <span class="ejemplos-label">Ejemplos (clic para usar):</span>
+      <div class="ejemplos-lista">
+        <button type="button" class="chip-ejemplo" data-formula="pi**2 * m * l**2 / (3 * T**2)">pi**2 * m * l**2 / (3 * T**2)</button>
+        <button type="button" class="chip-ejemplo" data-formula="sqrt(l/g)">sqrt(l/g)</button>
+        <button type="button" class="chip-ejemplo" data-formula="(v2 - v1) / t">(v2 - v1) / t</button>
+        <button type="button" class="chip-ejemplo" data-formula="4 * pi**2 * l / T**2">4 * pi**2 * l / T**2</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 02</span>
+      <h2>Variables medidas</h2>
+    </div>
+    <div id="lista-vars"></div>
+    <div class="acciones">
+      <button type="button" id="btn-agregar-var">+ Agregar variable</button>
+      <button type="button" id="btn-cientifica" title="Inserta &quot;e&quot; en la celda activa (Valor o Error), p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
+    </div>
+    <p class="hint" style="font-size:12px; opacity:0.7; margin:0.5rem 0 0;">
+      Para notación científica escribí, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado
+      numérico del celular no hay tecla "e": tocá el campo Valor o Error y usá el botón ×10ⁿ (e).
+    </p>
     <div class="mensaje error" id="msg-error"></div>
     <div class="acciones">
       <button class="primario" id="btn-calcular">Calcular</button>
@@ -918,12 +952,13 @@
   document.getElementById('btn-agregar-var').addEventListener('click', () => crearFilaVariable());
   document.getElementById('btn-calcular').addEventListener('click', calcular);
 
-  document.getElementById('btn-ejemplo').addEventListener('click', () => {
-    listaVars.innerHTML = '';
-    crearFilaVariable('m', '0.05697', '0.00001');
-    crearFilaVariable('l', '0.24', '0.0005');
-    crearFilaVariable('T', '4.45', '0.04');
-    inputFuncion.value = 'pi**2 * m * l**2 / (3 * T**2)';
+  // Chips de ejemplo: al hacer clic, insertan la fórmula directamente
+  // en el campo f (el usuario puede editarla o usarla tal cual).
+  document.querySelectorAll('.chip-ejemplo').forEach(chip => {
+    chip.addEventListener('click', () => {
+      inputFuncion.value = chip.dataset.formula;
+      inputFuncion.focus();
+    });
   });
 
   document.getElementById('btn-limpiar').addEventListener('click', () => {
