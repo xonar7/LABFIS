@@ -427,14 +427,13 @@
     if (comp.exponente !== 0){
       const sufijo = `e${comp.exponente}`;
       bloqueSeparada.classList.remove('oculto');
-      labelCompacta.textContent = 'Forma compacta';
       rSeparada.textContent = `${textoMedicion}${sufijo} ± ${textoError}${sufijo}`;
       rCompacta.textContent = `(${textoMedicion} ± ${textoError})${sufijo}`;
     } else {
       // Sin exponente, "forma separada" y "forma compacta" serían idénticas:
-      // se oculta el bloque duplicado y se muestra un único resultado.
+      // se oculta el bloque duplicado, pero el resultado se sigue
+      // mostrando etiquetado como "Forma compacta".
       bloqueSeparada.classList.add('oculto');
-      labelCompacta.textContent = 'Resultado';
       rCompacta.textContent = `${textoMedicion} ± ${textoError}`;
     }
     rDetalle.textContent = `error a 1 cifra significativa · medición original: ${medicionRaw} · error original: ${errorRaw}`;
