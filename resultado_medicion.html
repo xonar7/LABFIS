@@ -267,12 +267,12 @@
     </div>
   </section>
   <section class="readout oculto" id="panel-resultado">
-    <div class="r-bloque">
+    <div class="r-bloque" id="bloque-separada">
       <div class="r-label">Forma separada</div>
       <div class="r-valor" id="r-separada">—</div>
     </div>
     <div class="r-bloque">
-      <div class="r-label">Forma compacta</div>
+      <div class="r-label" id="label-compacta">Forma compacta</div>
       <div class="r-valor compacta" id="r-compacta">—</div>
     </div>
     <div class="r-detalle" id="r-detalle"></div>
@@ -372,6 +372,8 @@
   const btnCientificaError = document.getElementById('btn-cientifica-error');
   const msgError = document.getElementById('msg-error');
   const panelResultado = document.getElementById('panel-resultado');
+  const bloqueSeparada = document.getElementById('bloque-separada');
+  const labelCompacta = document.getElementById('label-compacta');
   const rSeparada = document.getElementById('r-separada');
   const rCompacta = document.getElementById('r-compacta');
   const rDetalle = document.getElementById('r-detalle');
@@ -424,10 +426,15 @@
 
     if (comp.exponente !== 0){
       const sufijo = `e${comp.exponente}`;
+      bloqueSeparada.classList.remove('oculto');
+      labelCompacta.textContent = 'Forma compacta';
       rSeparada.textContent = `${textoMedicion}${sufijo} ± ${textoError}${sufijo}`;
       rCompacta.textContent = `(${textoMedicion} ± ${textoError})${sufijo}`;
     } else {
-      rSeparada.textContent = `${textoMedicion} ± ${textoError}`;
+      // Sin exponente, "forma separada" y "forma compacta" serían idénticas:
+      // se oculta el bloque duplicado y se muestra un único resultado.
+      bloqueSeparada.classList.add('oculto');
+      labelCompacta.textContent = 'Resultado';
       rCompacta.textContent = `${textoMedicion} ± ${textoError}`;
     }
     rDetalle.textContent = `error a 1 cifra significativa · medición original: ${medicionRaw} · error original: ${errorRaw}`;
