@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expresar Resultado de una Medición</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --danger:#E2695A;
+    --danger-soft:rgba(226,105,90,0.14);
+    --readout-bg:#0D1712;
+    --readout-fg:#8FE3B0;
+    --readout-fg-soft:#CFEFDC;
+    --readout-border:#23392C;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+  }
+  .instrumento{
+    width:100%;
+    max-width:560px;
+  }
+  header.masthead{
+    margin-bottom:2rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+  h1{
+    font-size:24px;
+    font-weight:600;
+    margin:0 0 0.4rem;
+    letter-spacing:-0.01em;
+  }
+  .masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+    max-width:52ch;
+  }
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:1.25rem 1.4rem;
+    margin-bottom:1rem;
+  }
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    gap:0.6rem;
+    margin-bottom:0.9rem;
+  }
+  .paso-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:2px 7px;
+    letter-spacing:0.04em;
+  }
+  .panel-head h2{
+    font-size:15px;
+    font-weight:600;
+    margin:0;
+  }
+  label.campo-label{
+    display:block;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:0.35rem;
+  }
+  .campo{
+    margin-bottom:0.9rem;
+  }
+  .campo:last-child{ margin-bottom:0; }
+  .fila-valor-e{
+    display:flex;
+    gap:0.5rem;
+  }
+  .fila-valor-e input{ flex:1; }
+  .fila-valor-e button{
+    flex-shrink:0;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    padding:0.55rem 0.7rem;
+  }
+  .hint{
+    font-size:12px;
+    color:var(--ink-faint);
+    margin:0.4rem 0 0;
+  }
+  .hint code{
+    font-family:var(--font-mono);
+    background:var(--surface-2);
+    padding:0 4px;
+    border-radius:3px;
+  }
+  input[type="number"], input[type="text"]{
+    width:100%;
+    font-family:var(--font-mono);
+    font-size:15px;
+    padding:0.55rem 0.7rem;
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  input:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  button{
+    font-family:var(--font-sans);
+    font-size:13.5px;
+    font-weight:500;
+    border-radius:4px;
+    border:1px solid var(--card-border);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.55rem 0.9rem;
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  button:active{ transform:translateY(1px); }
+  button:disabled{ opacity:0.45; cursor:not-allowed; }
+  button.primario{
+    background:var(--accent);
+    border-color:var(--accent-dark);
+    color:var(--surface-2);
+    font-weight:600;
+  }
+  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
+  .acciones{
+    display:flex;
+    gap:0.6rem;
+    margin-top:1.1rem;
+  }
+  .mensaje{
+    font-size:12.5px;
+    margin-top:0.6rem;
+    padding:0.4rem 0.6rem;
+    border-radius:4px;
+    display:none;
+  }
+  .mensaje.error{ display:block; background:var(--danger-soft); color:var(--danger); }
+  .oculto{ display:none !important; }
+  .readout{
+    background:var(--readout-bg);
+    border:1px solid var(--readout-border);
+    border-radius:6px;
+    padding:1.4rem 1.5rem;
+    text-align:center;
+    margin-top:0.9rem;
+  }
+  .readout .r-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--readout-fg-soft);
+    margin-bottom:0.5rem;
+  }
+  .readout .r-bloque{
+    margin-bottom:1.1rem;
+  }
+  .readout .r-bloque:last-child{ margin-bottom:0; }
+  .readout .r-valor{
+    font-family:var(--font-mono);
+    font-size:28px;
+    font-weight:600;
+    color:var(--readout-fg);
+    letter-spacing:0.02em;
+    word-break:break-word;
+  }
+  .readout .r-valor.compacta{
+    font-size:32px;
+  }
+  .readout .r-detalle{
+    margin-top:0.6rem;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--readout-fg-soft);
+  }
+  footer.pie{
+    margin-top:1.5rem;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="instrumento">
+  <header class="masthead">
+    <p class="eyebrow">Instrumento de expresión de resultados</p>
+    <h1>Resultado de una medición</h1>
+    <p>Expresa el par (medición ± error) redondeando el error absoluto a una cifra
+    significativa y ajustando la medición al mismo número de decimales y al mismo
+    exponente de notación de ingeniería.</p>
+  </header>
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">DATOS</span>
+      <h2>Medición y error absoluto</h2>
+    </div>
+    <div class="campo">
+      <label class="campo-label" for="medicion">Resultado de la medición</label>
+      <div class="fila-valor-e">
+        <input type="text" id="medicion" inputmode="decimal" enterkeyhint="next" placeholder="ej. 6200000" />
+        <button type="button" id="btn-cientifica-medicion" title="Inserta &quot;e&quot; en el campo, p. ej. 6.2 → 6.2e6">×10ⁿ (e)</button>
+      </div>
+    </div>
+    <div class="campo">
+      <label class="campo-label" for="error">Error absoluto</label>
+      <div class="fila-valor-e">
+        <input type="text" id="error" inputmode="decimal" enterkeyhint="done" placeholder="ej. 310000" />
+        <button type="button" id="btn-cientifica-error" title="Inserta &quot;e&quot; en el campo, p. ej. 3.1 → 3.1e5">×10ⁿ (e)</button>
+      </div>
+    </div>
+    <p class="hint">
+      El error absoluto siempre se redondea a <strong>1 cifra significativa</strong> (redondeo
+      bancario) y se expresa en notación de ingeniería (exponente múltiplo de 3). La
+      medición se redondea después, con la misma cantidad de decimales y el mismo
+      exponente que quedó fijado por el error. Para notación científica escribí, p. ej.,
+      <code>6.2e6</code> (no con "^").
+    </p>
+    <div class="mensaje error" id="msg-error"></div>
+    <div class="acciones">
+      <button class="primario" id="btn-calcular">Expresar resultado</button>
+      <button type="button" id="btn-reiniciar">Reiniciar</button>
+    </div>
+  </section>
+  <section class="readout oculto" id="panel-resultado">
+    <div class="r-bloque">
+      <div class="r-label">Forma separada</div>
+      <div class="r-valor" id="r-separada">—</div>
+    </div>
+    <div class="r-bloque">
+      <div class="r-label">Forma compacta</div>
+      <div class="r-valor compacta" id="r-compacta">—</div>
+    </div>
+    <div class="r-detalle" id="r-detalle"></div>
+  </section>
+  <footer class="pie">Resultado de una medición (V ± E) · UMSS</footer>
+</div>
+<script>
+(function(){
+  // Redondeo bancario (mitad al par más cercano / round half even), idéntico
+  // al usado en cifras_significativas_rev.html. Ej: 2.5 -> 2, 3.5 -> 4.
+  function roundHalfEven(value, decimals){
+    const factor = Math.pow(10, decimals);
+    const scaled = value * factor;
+    const piso = Math.floor(scaled);
+    const resto = scaled - piso;
+    const eps = 1e-9;
+    let resultado;
+    if (Math.abs(resto - 0.5) < eps){
+      resultado = (piso % 2 === 0) ? piso : piso + 1;
+    } else {
+      resultado = Math.round(scaled);
+    }
+    return resultado / factor;
+  }
+
+  // Redondea el ERROR ABSOLUTO a 1 cifra significativa (bancario) y devuelve
+  // los componentes (exponente de ingeniería y cantidad de decimales de la
+  // mantisa) que luego se le imponen a la medición, además del texto ya
+  // formateado del propio error. La lógica de elegir el exponente múltiplo
+  // de 3 (y de subirlo cuando la mantisa seguiría teniendo más dígitos
+  // enteros que cifras significativas pedidas) es la misma que en
+  // cifras_significativas_rev.html, aplicada aquí siempre con n = 1.
+  function calcularComponentesError(errorAbs){
+    const n = 1; // el error absoluto siempre va a 1 cifra significativa
+    const signo = errorAbs < 0 ? -1 : 1;
+    const absVal = Math.abs(errorAbs);
+    const d = Math.floor(Math.log10(absVal)) + 1;
+    const decimales = n - d;
+    let redondeado = roundHalfEven(absVal, decimales);
+    // Recalcula el orden de magnitud tras el redondeo, por si "sube" un
+    // dígito (ej. 0.96 -> 1 con 1 cifra cambia de 1 a 2 dígitos enteros).
+    let dFinal = redondeado === 0 ? 1 : Math.floor(Math.log10(redondeado)) + 1;
+    let decimalesFinal = n - dFinal;
+    let exponente, decimalesMantisa, textoMantisa;
+
+    if (decimalesFinal < 0){
+      // --- Notación de ingeniería (exponente múltiplo de 3) ---
+      const exponenteCientifico = dFinal - 1;
+      exponente = Math.floor(exponenteCientifico / 3) * 3;
+      let digitosEnteros = exponenteCientifico - exponente + 1;
+      if (digitosEnteros > n){
+        // La mantisa seguiría con más dígitos enteros que cifras
+        // significativas pedidas: se sube un múltiplo de 3 más.
+        exponente += 3;
+        digitosEnteros = exponenteCientifico - exponente + 1;
+      }
+      decimalesMantisa = Math.max(n - digitosEnteros, 0);
+      let mantisa = redondeado / Math.pow(10, exponente);
+      textoMantisa = decimalesMantisa > 0 ? mantisa.toFixed(decimalesMantisa) : mantisa.toFixed(0);
+      // Salvaguarda: si al fijar decimales la mantisa "sube" a 1000 o más.
+      if (Math.abs(parseFloat(textoMantisa)) >= 1000){
+        exponente += 3;
+        digitosEnteros = exponenteCientifico - exponente + 1;
+        decimalesMantisa = Math.max(n - digitosEnteros, 0);
+        mantisa = redondeado / Math.pow(10, exponente);
+        textoMantisa = decimalesMantisa > 0 ? mantisa.toFixed(decimalesMantisa) : mantisa.toFixed(0);
+      }
+    } else {
+      // No hace falta exponente: la cifra significativa cabe en notación
+      // decimal normal sin ambigüedad de ceros de relleno.
+      exponente = 0;
+      decimalesMantisa = decimalesFinal;
+      textoMantisa = decimalesMantisa > 0 ? redondeado.toFixed(decimalesMantisa) : redondeado.toFixed(0);
+    }
+
+    return {
+      exponente,
+      decimalesMantisa,
+      textoErrorMantisa: (signo < 0 ? '-' : '') + textoMantisa
+    };
+  }
+
+  // Redondea la MEDICIÓN imponiéndole el exponente y la cantidad de
+  // decimales que ya quedaron fijados por el error absoluto.
+  function formatearConComponentes(valor, exponente, decimalesMantisa){
+    const escala = Math.pow(10, exponente);
+    const escalado = valor / escala;
+    const redondeado = roundHalfEven(escalado, decimalesMantisa);
+    return decimalesMantisa > 0 ? redondeado.toFixed(decimalesMantisa) : redondeado.toFixed(0);
+  }
+
+  const inputMedicion = document.getElementById('medicion');
+  const inputError = document.getElementById('error');
+  const btnCalcular = document.getElementById('btn-calcular');
+  const btnReiniciar = document.getElementById('btn-reiniciar');
+  const btnCientificaMedicion = document.getElementById('btn-cientifica-medicion');
+  const btnCientificaError = document.getElementById('btn-cientifica-error');
+  const msgError = document.getElementById('msg-error');
+  const panelResultado = document.getElementById('panel-resultado');
+  const rSeparada = document.getElementById('r-separada');
+  const rCompacta = document.getElementById('r-compacta');
+  const rDetalle = document.getElementById('r-detalle');
+
+  // El teclado numérico (inputmode="decimal") del celular no tiene "e":
+  // este botón la inserta en la posición del cursor para poder escribir
+  // notación científica (ej. 6.2 -> 6.2e6) sin ella.
+  function insertarE(input){
+    const val = input.value;
+    if (/[eE]/.test(val)) { input.focus(); return; }
+    const pos = input.selectionStart ?? val.length;
+    input.value = val.slice(0, pos) + 'e' + val.slice(pos);
+    input.focus();
+    input.setSelectionRange(pos + 1, pos + 1);
+  }
+  btnCientificaMedicion.addEventListener('click', () => insertarE(inputMedicion));
+  btnCientificaError.addEventListener('click', () => insertarE(inputError));
+
+  function calcular(){
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+
+    const medicionRaw = inputMedicion.value.trim().replace(',', '.');
+    const errorRaw = inputError.value.trim().replace(',', '.');
+    const medicion = Number(medicionRaw);
+    const error = Number(errorRaw);
+
+    if (medicionRaw === '' || Number.isNaN(medicion)){
+      msgError.textContent = 'Ingrese un valor numérico válido para la medición.';
+      msgError.classList.add('error');
+      panelResultado.classList.add('oculto');
+      return;
+    }
+    if (errorRaw === '' || Number.isNaN(error)){
+      msgError.textContent = 'Ingrese un valor numérico válido para el error absoluto.';
+      msgError.classList.add('error');
+      panelResultado.classList.add('oculto');
+      return;
+    }
+    if (error === 0){
+      msgError.textContent = 'El error absoluto debe ser distinto de cero.';
+      msgError.classList.add('error');
+      panelResultado.classList.add('oculto');
+      return;
+    }
+
+    const comp = calcularComponentesError(error);
+    const textoMedicion = formatearConComponentes(medicion, comp.exponente, comp.decimalesMantisa);
+    const textoError = comp.textoErrorMantisa;
+
+    if (comp.exponente !== 0){
+      const sufijo = `e${comp.exponente}`;
+      rSeparada.textContent = `${textoMedicion}${sufijo} ± ${textoError}${sufijo}`;
+      rCompacta.textContent = `(${textoMedicion} ± ${textoError})${sufijo}`;
+    } else {
+      rSeparada.textContent = `${textoMedicion} ± ${textoError}`;
+      rCompacta.textContent = `${textoMedicion} ± ${textoError}`;
+    }
+    rDetalle.textContent = `error a 1 cifra significativa · medición original: ${medicionRaw} · error original: ${errorRaw}`;
+    panelResultado.classList.remove('oculto');
+  }
+
+  btnCalcular.addEventListener('click', calcular);
+  inputMedicion.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      inputError.focus();
+    }
+  });
+  inputError.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      calcular();
+    }
+  });
+  btnReiniciar.addEventListener('click', () => {
+    inputMedicion.value = '';
+    inputError.value = '';
+    msgError.classList.remove('error');
+    panelResultado.classList.add('oculto');
+    inputMedicion.focus();
+  });
+  inputMedicion.focus();
+})();
+</script>
+</body>
+</html>
