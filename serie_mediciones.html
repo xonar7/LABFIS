@@ -263,6 +263,68 @@
     color:var(--ink);
   }
 
+  /* --- Tabla de mediciones y cálculos derivados --- */
+  .tabla-wrap{
+    overflow-x:auto;
+    margin-bottom:0.9rem;
+  }
+  table.tabla-mediciones{
+    width:100%;
+    border-collapse:collapse;
+    font-family:var(--font-mono);
+    font-size:13px;
+  }
+  table.tabla-mediciones th, table.tabla-mediciones td{
+    padding:0.45rem 0.65rem;
+    text-align:right;
+    border-bottom:1px solid var(--card-border);
+    white-space:nowrap;
+  }
+  table.tabla-mediciones th:first-child, table.tabla-mediciones td:first-child{
+    text-align:left;
+  }
+  table.tabla-mediciones thead th{
+    color:var(--ink-soft);
+    font-size:11.5px;
+    letter-spacing:0.04em;
+    font-family:var(--font-sans);
+    font-weight:600;
+    border-bottom:1px solid var(--card-border);
+  }
+  table.tabla-mediciones tbody tr:hover{ background:var(--surface-2); }
+  table.tabla-mediciones tr.fila-suma td{
+    font-weight:600;
+    color:var(--accent);
+    border-top:1px solid var(--card-border);
+    border-bottom:none;
+  }
+  .nota-consistencia{
+    font-size:12px;
+    color:var(--ink-faint);
+    font-style:italic;
+    margin:0 0 1.1rem;
+  }
+  .calculos-derivados .cd-bloque{
+    margin-bottom:0.9rem;
+  }
+  .calculos-derivados .cd-bloque:last-child{ margin-bottom:0; }
+  .calculos-derivados .cd-titulo{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:0.3rem;
+  }
+  .calculos-derivados .cd-formula{
+    font-family:var(--font-mono);
+    font-size:13px;
+    background:var(--surface-2);
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    padding:0.55rem 0.75rem;
+    color:var(--readout-fg-soft);
+    overflow-x:auto;
+  }
+
   .bitacora{
     font-family:var(--font-mono);
     font-size:12.5px;
@@ -352,16 +414,16 @@
     <p class="eyebrow">Instrumento de análisis · Física I, pág. 11–13</p>
     <h1>Analizador de serie de mediciones</h1>
     <p>Calcula media, desviación estándar de la muestra, error de la media y el
-    resultado final redondeado según la regla e_x = max(σ_x̄, P).</p>
+    resultado final redondeado según la regla e_x = max(σ_x, P).</p>
   </header>
 
-  <!-- PASO 01: PRECISIÓN -->
+  <!-- PASO 01: RESOLUCIÓN (APRECIACIÓN) -->
   <section class="panel">
     <div class="panel-head">
       <span class="paso-badge">PASO 01</span>
-      <h2>Precisión del instrumento</h2>
+      <h2>Resolución (apreciación) del instrumento</h2>
     </div>
-    <label class="campo-label" for="precision">Precisión / resolución del instrumento (P)</label>
+    <label class="campo-label" for="precision">Resolución (apreciación) del instrumento (P)</label>
     <div class="fila-valor-e">
       <input type="text" id="precision" inputmode="decimal" enterkeyhint="next" placeholder="ej. 0.01" />
       <button type="button" class="btn-e" data-target="precision" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
@@ -397,10 +459,25 @@
     <button type="button" id="btn-reiniciar">Reiniciar</button>
   </div>
 
-  <!-- RESULTADOS -->
-  <section class="panel oculto" id="panel-resultados" style="margin-top:1.5rem;">
+  <!-- TABLA DE MEDICIONES Y CÁLCULOS -->
+  <section class="panel oculto" id="panel-tabla-calculos" style="margin-top:1.5rem;">
     <div class="panel-head">
       <span class="paso-badge">PASO 03</span>
+      <h2>Tabla de mediciones</h2>
+    </div>
+    <div class="tabla-wrap" id="tabla-mediciones-wrap"></div>
+    <p class="nota-consistencia" id="nota-consistencia"></p>
+
+    <div class="panel-head" style="margin-top:0.3rem;">
+      <h2 style="font-size:13.5px;">Cálculos derivados</h2>
+    </div>
+    <div class="calculos-derivados" id="calculos-derivados"></div>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section class="panel oculto" id="panel-resultados">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 04</span>
       <h2>Resultados sin redondear</h2>
     </div>
     <div class="grid-datos" id="grid-sin-redondear"></div>
@@ -408,7 +485,7 @@
 
   <section class="panel oculto" id="panel-bitacora">
     <div class="panel-head">
-      <span class="paso-badge">PASO 04</span>
+      <span class="paso-badge">PASO 05</span>
       <h2>Redondeo y selección del error final</h2>
     </div>
     <div class="bitacora" id="bitacora"></div>
@@ -606,16 +683,31 @@
 
   function calcularEstadisticas(datos, precision){
     const n = datos.length;
-    const media = datos.reduce((a, b) => a + b, 0) / n;
+    const sumaValores = datos.reduce((a, b) => a + b, 0);
+    const media = sumaValores / n;
     const discrepancias = datos.map(d => d - media);
-    const sumaCuadrado = discrepancias.reduce((a, d) => a + d * d, 0);
-    const sigmaNMinus1 = Math.sqrt(sumaCuadrado / (n - 1));
+    const sumaDiscrepancias = discrepancias.reduce((a, d) => a + d, 0);
+    const cuadrados = discrepancias.map(d => d * d);
+    const sumaCuadrado = cuadrados.reduce((a, d) => a + d, 0);
+    // Varianza muestral, con N-1 grados de libertad (se usa la media
+    // estimada de los propios datos, no una media poblacional conocida).
+    const varianza = sumaCuadrado / (n - 1);
+    const sigmaNMinus1 = Math.sqrt(varianza);
     const sigmaMedia = sigmaNMinus1 / Math.sqrt(n);
     const errorFinal = Math.max(sigmaMedia, precision);
 
     return {
-      n, datos, media, sigmaNMinus1, sigmaMedia, precision, errorFinal
+      n, datos, sumaValores, media, discrepancias, sumaDiscrepancias,
+      cuadrados, sumaCuadrado, varianza, sigmaNMinus1, sigmaMedia,
+      precision, errorFinal
     };
+  }
+
+  // Formatea un número a un número fijo de decimales sin arrastrar
+  // errores de redondeo binario visibles (ej. -0.000000 -> 0.000000).
+  function fmtTabla(x, dec){
+    const r = Number(x.toFixed(dec));
+    return (Object.is(r, -0) ? 0 : r).toFixed(dec);
   }
 
   // ---------- Estado de la aplicación ----------
@@ -703,7 +795,7 @@
       e.preventDefault();
       const precisionVal = Number(inputPrecision.value);
       if (inputPrecision.value === '' || Number.isNaN(precisionVal) || precisionVal < 0){
-        msgPrecision.textContent = 'Ingrese una precisión numérica no negativa.';
+        msgPrecision.textContent = 'Ingrese una resolución (apreciación) numérica no negativa.';
         msgPrecision.classList.add('error');
         return;
       }
@@ -717,6 +809,7 @@
     inputPrecision.value = '';
     inputMedicion.value = '';
     renderLista();
+    document.getElementById('panel-tabla-calculos').classList.add('oculto');
     document.getElementById('panel-resultados').classList.add('oculto');
     document.getElementById('panel-bitacora').classList.add('oculto');
     document.getElementById('contenedor-graficos').classList.add('oculto');
@@ -730,7 +823,7 @@
   btnCalcular.addEventListener('click', () => {
     const precision = Number(inputPrecision.value);
     if (Number.isNaN(precision) || precision < 0){
-      msgPrecision.textContent = 'Ingrese una precisión numérica no negativa.';
+      msgPrecision.textContent = 'Ingrese una resolución (apreciación) numérica no negativa.';
       msgPrecision.classList.add('error');
       return;
     }
@@ -741,14 +834,66 @@
     const resultados = calcularEstadisticas(mediciones, precision);
     ultimosResultados = resultados;
 
+    // ---- PASO 03: tabla de mediciones (N, valor, d_i, d_i²) ----
+    const decTabla = 6; // decimales usados solo para esta tabla de trabajo
+    let filasHtml = '';
+    resultados.datos.forEach((v, i) => {
+      const di = resultados.discrepancias[i];
+      const di2 = resultados.cuadrados[i];
+      filasHtml += `<tr>
+        <td>${i + 1}</td>
+        <td>${v}</td>
+        <td>${fmtTabla(di, decTabla)}</td>
+        <td>${fmtTabla(di2, decTabla)}</td>
+      </tr>`;
+    });
+    const sumaDiscConsistente = Math.abs(resultados.sumaDiscrepancias) < 1e-9
+      ? '0' : fmtTabla(resultados.sumaDiscrepancias, decTabla);
+    filasHtml += `<tr class="fila-suma">
+      <td>&Sigma;</td>
+      <td>${fmtTabla(resultados.sumaValores, decTabla)}</td>
+      <td>${sumaDiscConsistente}</td>
+      <td>${fmtTabla(resultados.sumaCuadrado, decTabla)}</td>
+    </tr>`;
+
+    document.getElementById('tabla-mediciones-wrap').innerHTML =
+      `<table class="tabla-mediciones">
+        <thead>
+          <tr><th>N</th><th>x<sub>i</sub></th><th>d<sub>i</sub> = x<sub>i</sub> \u2212 x&#772;</th><th>d<sub>i</sub>&sup2;</th></tr>
+        </thead>
+        <tbody>${filasHtml}</tbody>
+      </table>`;
+    document.getElementById('nota-consistencia').textContent =
+      '(La suma de dᵢ da 0, como control de consistencia: es propiedad de la media aritmética.)';
+
+    // ---- Cálculos derivados: varianza, desviación estándar, error de la media ----
+    // Simbología exacta de fisicaI.pdf (ec. 2.4, 2.6, 2.7): varianza = s²,
+    // desviación estándar de la muestra = σ_(n-1), error de la media = σ_x.
+    document.getElementById('calculos-derivados').innerHTML =
+      `<div class="cd-bloque">
+        <div class="cd-titulo">Varianza muestral (con N \u2212 1 grados de libertad, ya que se usa la media estimada de los datos):</div>
+        <div class="cd-formula">s\u00B2 = \u03A3d\u1D62\u00B2 / (N \u2212 1) = ${fmtTabla(resultados.sumaCuadrado, decTabla)} / ${resultados.n - 1} = ${fmtTabla(resultados.varianza, decTabla)}</div>
+      </div>
+      <div class="cd-bloque">
+        <div class="cd-titulo">Desviación estándar de la muestra:</div>
+        <div class="cd-formula">\u03C3_(n-1) = \u221As\u00B2 = \u221A${fmtTabla(resultados.varianza, decTabla)} = ${fmtTabla(resultados.sigmaNMinus1, decTabla)}</div>
+      </div>
+      <div class="cd-bloque">
+        <div class="cd-titulo">Error de la media aritmética (\u03C3_x = \u03C3_(n-1)/\u221AN):</div>
+        <div class="cd-formula">\u03C3_x = \u03C3_(n-1) / \u221AN = ${fmtTabla(resultados.sigmaNMinus1, decTabla)} / \u221A${resultados.n} = ${fmtTabla(resultados.sigmaMedia, decTabla)}</div>
+      </div>`;
+
+    document.getElementById('panel-tabla-calculos').classList.remove('oculto');
+
     // Resultados sin redondear
     const grid = document.getElementById('grid-sin-redondear');
     grid.innerHTML = '';
     const datosGrid = [
       ['Media aritmética (x̄)', resultados.media.toFixed(10)],
+      ['Varianza muestral (s²)', resultados.varianza.toFixed(10)],
       ['Desviación estándar (σ_(n-1))', resultados.sigmaNMinus1.toFixed(10)],
-      ['Error de la media (σ_x̄)', resultados.sigmaMedia.toFixed(10)],
-      ['Precisión del instrumento (P)', String(precision)]
+      ['Error de la media (σ_x)', resultados.sigmaMedia.toFixed(10)],
+      ['Resolución (apreciación) del instrumento (P)', String(precision)]
     ];
     datosGrid.forEach(([etiqueta, valor]) => {
       const div = document.createElement('div');
@@ -765,18 +910,18 @@
     let criterio, resultadoFinal, errorFinal;
     let comparacion;
     if (errorMediaRedondeado > precision){
-      criterio = 'Error de la media aritmética (σ_x̄)';
-      comparacion = `Como σ_x̄ (${errorMediaRedondeado}) > P (${precision}) → se selecciona e_x = σ_x̄`;
+      criterio = 'Error de la media aritmética (σ_x)';
+      comparacion = `Como σ_x (${errorMediaRedondeado}) > P (${precision}) → se selecciona e_x = σ_x`;
       resultadoFinal = formatearValorError(resultados.media, errorMediaRedondeado);
       errorFinal = errorMediaRedondeado;
     } else if (precision > errorMediaRedondeado){
-      criterio = 'Precisión del instrumento (P)';
-      comparacion = `Como P (${precision}) > σ_x̄ (${errorMediaRedondeado}) → se selecciona e_x = P`;
+      criterio = 'Resolución (apreciación) del instrumento (P)';
+      comparacion = `Como P (${precision}) > σ_x (${errorMediaRedondeado}) → se selecciona e_x = P`;
       resultadoFinal = resultadoConPrecision;
       errorFinal = precision;
     } else {
-      criterio = 'Ambos son iguales (σ_x̄ = P)';
-      comparacion = `σ_x̄ (${errorMediaRedondeado}) = P (${precision})`;
+      criterio = 'Ambos son iguales (σ_x = P)';
+      comparacion = `σ_x (${errorMediaRedondeado}) = P (${precision})`;
       resultadoFinal = formatearValorError(resultados.media, errorMediaRedondeado);
       errorFinal = errorMediaRedondeado;
     }
@@ -790,11 +935,11 @@
 
     const bitacora = document.getElementById('bitacora');
     bitacora.innerHTML =
-      `<span class="paso-titulo">PASO 6 — Media ± Precisión</span>\n` +
-      `Media ± Precisión = ${resultadoConPrecision}\n\n` +
+      `<span class="paso-titulo">PASO 6 — Media ± Resolución</span>\n` +
+      `Media ± Resolución = ${resultadoConPrecision}\n\n` +
       `<span class="paso-titulo">PASO 7 — Comparación y selección</span>\n` +
-      `Regla: e_x = max(σ_x̄, P)\n` +
-      `σ_x̄ = ${errorMediaRedondeado}   |   P = ${precision}\n` +
+      `Regla: e_x = max(σ_x, P)\n` +
+      `σ_x = ${errorMediaRedondeado}   |   P = ${precision}\n` +
       `${comparacion}\n` +
       `Criterio seleccionado: <span class="criterio">${criterio}</span>\n\n` +
       `<span class="paso-titulo">Error porcentual</span>\n` +
