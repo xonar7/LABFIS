@@ -263,6 +263,26 @@
     color:var(--ink);
   }
 
+  .media-parcial{
+    background:var(--surface-2);
+    border:1px solid var(--card-border);
+    border-left:3px solid var(--accent);
+    border-radius:4px;
+    padding:0.6rem 0.7rem;
+    margin-top:0.7rem;
+  }
+  .media-parcial .etiqueta{
+    font-size:11px;
+    color:var(--ink-faint);
+    margin-bottom:0.2rem;
+  }
+  .media-parcial .valor{
+    font-family:var(--font-mono);
+    font-size:15px;
+    font-weight:600;
+    color:var(--accent);
+  }
+
   /* --- Tabla de mediciones y cálculos derivados --- */
   .tabla-wrap{
     overflow-x:auto;
@@ -417,24 +437,10 @@
     resultado final redondeado según la regla e_x = max(σ_x, P).</p>
   </header>
 
-  <!-- PASO 01: RESOLUCIÓN (APRECIACIÓN) -->
+  <!-- PASO 01: SERIE DE MEDICIONES -->
   <section class="panel">
     <div class="panel-head">
       <span class="paso-badge">PASO 01</span>
-      <h2>Resolución (apreciación) del instrumento</h2>
-    </div>
-    <label class="campo-label" for="precision">Resolución (apreciación) del instrumento (P)</label>
-    <div class="fila-valor-e">
-      <input type="text" id="precision" inputmode="decimal" enterkeyhint="next" placeholder="ej. 0.01" />
-      <button type="button" class="btn-e" data-target="precision" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
-    </div>
-    <div class="mensaje error" id="msg-precision"></div>
-  </section>
-
-  <!-- PASO 02: SERIE DE MEDICIONES -->
-  <section class="panel">
-    <div class="panel-head">
-      <span class="paso-badge">PASO 02</span>
       <h2>Serie de mediciones</h2>
     </div>
     <label class="campo-label" for="medicion">Valor medido (Enter para agregar)</label>
@@ -452,6 +458,24 @@
     <div class="mensaje error" id="msg-medicion"></div>
     <div class="lista-mediciones" id="lista-mediciones"></div>
     <div class="contador" id="contador">0 mediciones registradas (mínimo 2)</div>
+    <div class="media-parcial oculto" id="media-parcial">
+      <div class="etiqueta">Media aritmética parcial (x̄)</div>
+      <div class="valor" id="media-parcial-valor">—</div>
+    </div>
+  </section>
+
+  <!-- PASO 02: RESOLUCIÓN (APRECIACIÓN) -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">PASO 02</span>
+      <h2>Resolución (apreciación) del instrumento</h2>
+    </div>
+    <label class="campo-label" for="precision">Resolución (apreciación) del instrumento (P)</label>
+    <div class="fila-valor-e">
+      <input type="text" id="precision" inputmode="decimal" enterkeyhint="done" placeholder="ej. 0.01" />
+      <button type="button" class="btn-e" data-target="precision" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
+    </div>
+    <div class="mensaje error" id="msg-precision"></div>
   </section>
 
   <div class="acciones">
@@ -723,6 +747,8 @@
   const contadorEl = document.getElementById('contador');
   const msgMedicion = document.getElementById('msg-medicion');
   const msgPrecision = document.getElementById('msg-precision');
+  const mediaParcialEl = document.getElementById('media-parcial');
+  const mediaParcialValorEl = document.getElementById('media-parcial-valor');
 
   function renderLista(){
     listaEl.innerHTML = '';
@@ -743,6 +769,16 @@
     });
     contadorEl.textContent = `${mediciones.length} medición(es) registrada(s) (mínimo 2)`;
     btnCalcular.disabled = !(mediciones.length >= 2 && inputPrecision.value !== '' && Number(inputPrecision.value) >= 0);
+
+    // Media aritmética parcial: se muestra apenas hay datos cargados,
+    // antes de pasar al paso 2 (resolución del instrumento).
+    if (mediciones.length >= 1){
+      const mediaParcial = mediciones.reduce((a, b) => a + b, 0) / mediciones.length;
+      mediaParcialValorEl.textContent = 'x̄ = ' + fmtTabla(mediaParcial, 6);
+      mediaParcialEl.classList.remove('oculto');
+    } else {
+      mediaParcialEl.classList.add('oculto');
+    }
   }
 
   function agregarMedicion(){
@@ -800,7 +836,9 @@
         return;
       }
       msgPrecision.classList.remove('error');
-      inputMedicion.focus();
+      if (!btnCalcular.disabled){
+        btnCalcular.focus();
+      }
     }
   });
 
@@ -1112,3 +1150,4 @@
 
 </body>
 </html>
+
