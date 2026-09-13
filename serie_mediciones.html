@@ -119,7 +119,7 @@
     margin-bottom:0.35rem;
   }
 
-  input[type="number"], input[type="text"]{
+  input[type="number"], input[type="text"], select{
     width:100%;
     font-family:var(--font-mono);
     font-size:15px;
@@ -147,7 +147,7 @@
     border-radius:3px;
   }
 
-  input:focus{
+  input:focus, select:focus{
     outline:none;
     border-color:var(--accent);
     box-shadow:0 0 0 3px var(--accent-soft);
@@ -464,17 +464,59 @@
     </div>
   </section>
 
-  <!-- PASO 02: RESOLUCIÓN (APRECIACIÓN) -->
+  <!-- PASO 02: ERROR INSTRUMENTAL (P) -->
   <section class="panel">
     <div class="panel-head">
       <span class="paso-badge">PASO 02</span>
-      <h2>Resolución (apreciación) del instrumento</h2>
+      <h2>Error instrumental (P)</h2>
     </div>
-    <label class="campo-label" for="precision">Resolución (apreciación) del instrumento (P)</label>
-    <div class="fila-valor-e">
-      <input type="text" id="precision" inputmode="decimal" enterkeyhint="done" placeholder="ej. 0.01" />
-      <button type="button" class="btn-e" data-target="precision" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
+    <label class="campo-label" for="modo-p">¿Cómo se determina P?</label>
+    <select id="modo-p">
+      <option value="manual">Manual (resolución/apreciación del instrumento)</option>
+      <option value="fluke">Tabla de exactitud — Fluke 117</option>
+    </select>
+
+    <div id="bloque-manual" style="margin-top:0.9rem;">
+      <label class="campo-label" for="precision">Resolución (apreciación) del instrumento (P)</label>
+      <div class="fila-valor-e">
+        <input type="text" id="precision" inputmode="decimal" enterkeyhint="done" placeholder="ej. 0.01" />
+        <button type="button" class="btn-e" data-target="precision" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
+      </div>
     </div>
+
+    <div id="bloque-fluke" class="oculto" style="margin-top:0.9rem;">
+      <label class="campo-label" for="fluke-funcion">Función del multímetro</label>
+      <select id="fluke-funcion">
+        <option value="DC_V">Voltímetro DC</option>
+        <option value="AC_V">Voltímetro AC (True-rms)</option>
+        <option value="LOZ_V">Auto-V LoZ (True-rms)</option>
+        <option value="OHM">Óhmetro</option>
+        <option value="DIODE">Prueba de diodo</option>
+        <option value="CAP">Capacímetro</option>
+        <option value="LOZ_CAP">Capacímetro Lo-Z (power-up option)</option>
+        <option value="AC_A">Amperímetro AC (True-rms)</option>
+        <option value="DC_A">Amperímetro DC</option>
+        <option value="HZ">Frecuencímetro (Hz)</option>
+      </select>
+
+      <div id="fluke-campo-banda" class="oculto" style="margin-top:0.7rem;">
+        <label class="campo-label" for="fluke-banda">Banda de frecuencia</label>
+        <select id="fluke-banda"></select>
+      </div>
+
+      <div style="margin-top:0.7rem;">
+        <label class="campo-label" for="fluke-unidad">Unidad en que escribiste las mediciones (Paso 01)</label>
+        <select id="fluke-unidad"></select>
+      </div>
+
+      <p class="hint" style="font-size:12px; opacity:0.7; margin:0.5rem 0 0;">
+        P se calcula con la fórmula de la Tabla 1 (± % de lectura + cuentas) usando la media
+        de tus mediciones (x̄) como valor representativo, con el rango detectado automáticamente
+        a partir de esa media.
+      </p>
+      <div class="oculto" id="fluke-info-rango" style="margin-top:0.7rem; background:var(--surface-2); border:1px solid var(--card-border); border-radius:6px; padding:0.7rem 0.9rem; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-soft);"></div>
+    </div>
+
     <div class="mensaje error" id="msg-precision"></div>
   </section>
 
@@ -703,7 +745,125 @@
     return decimalesFinal > 0 ? redondeado.toFixed(decimalesFinal) : redondeado.toFixed(0);
   }
 
-  // ---------- Estadística ----------
+  // ---------- Tabla 1. Accuracy Specifications — Fluke 114/115/117 ----------
+  // Misma tabla y misma lógica de autorango que en fluke_117.html. Acá solo
+  // se usa para obtener el error instrumental CRUDO (sin redondear) a partir
+  // de un valor representativo (la media de la serie, x̄); el redondeo a 1
+  // cifra significativa lo hace la función redondearErrorUnaCifra() que ya
+  // existe más arriba en este mismo archivo, para no duplicar convenciones
+  // de redondeo distintas dentro del mismo programa.
+  const FLUKE_FUNCIONES = {
+    DC_V: { nombre:'Voltímetro DC', unidad:'V', acCaveat:false,
+      rangos:[
+        {max:0.6, res:0.0001, pct:0.5, counts:2, label:'600.0 mV'},
+        {max:6.000, res:0.001, pct:0.5, counts:2, label:'6.000 V'},
+        {max:60.00, res:0.01, pct:0.5, counts:2, label:'60.00 V'},
+        {max:600.0, res:0.1, pct:0.5, counts:2, label:'600.0 V'}
+      ]},
+    AC_V: { nombre:'Voltímetro AC True-rms', unidad:'V', acCaveat:true,
+      rangos:[
+        {max:0.6, res:0.0001, label:'600.0 mV'},
+        {max:6.000, res:0.001, label:'6.000 V'},
+        {max:60.00, res:0.01, label:'60.00 V'},
+        {max:600.0, res:0.1, label:'600.0 V'}
+      ],
+      bandas:[
+        {key:'b1', label:'45 Hz a 500 Hz', pct:1.0, counts:3},
+        {key:'b2', label:'500 Hz a 1 kHz', pct:2.0, counts:3}
+      ]},
+    LOZ_V: { nombre:'Auto-V LoZ True-rms', unidad:'V', acCaveat:false,
+      rangos:[{max:600.0, res:0.1, label:'600.0 V'}],
+      bandas:[
+        {key:'b1', label:'DC o 45 Hz a 500 Hz', pct:2.0, counts:3},
+        {key:'b2', label:'500 Hz a 1 kHz', pct:4.0, counts:3}
+      ]},
+    OHM: { nombre:'Óhmetro', unidad:'Ω', acCaveat:false,
+      rangos:[
+        {max:600.0, res:0.1, pct:0.9, counts:2, label:'600.0 Ω'},
+        {max:6000, res:1, pct:0.9, counts:1, label:'6.000 kΩ'},
+        {max:60000, res:10, pct:0.9, counts:1, label:'60.00 kΩ'},
+        {max:600000, res:100, pct:0.9, counts:1, label:'600.0 kΩ'},
+        {max:6000000, res:1000, pct:0.9, counts:1, label:'6.000 MΩ'},
+        {max:40000000, res:10000, pct:5, counts:2, label:'40.00 MΩ'}
+      ]},
+    DIODE: { nombre:'Prueba de diodo', unidad:'V', acCaveat:false,
+      rangos:[{max:2.000, res:0.001, pct:0.9, counts:2, label:'2.000 V'}]},
+    CAP: { nombre:'Capacímetro', unidad:'µF', acCaveat:false,
+      rangos:[
+        {max:1, res:0.001, pct:1.9, counts:2, label:'1000 nF'},
+        {max:10.00, res:0.01, pct:1.9, counts:2, label:'10.00 µF'},
+        {max:100.0, res:0.1, pct:1.9, counts:2, label:'100.0 µF'},
+        {max:1000, res:1, pct:1.9, counts:2, label:'9999 µF (100–1000 µF)'},
+        {max:9999, res:1, pct:5, counts:20, label:'9999 µF (>1000 µF)'}
+      ]},
+    LOZ_CAP: { nombre:'Capacímetro Lo-Z (power-up option)', unidad:'µF', acCaveat:false, tipico:true,
+      rangos:[
+        {max:1, res:0.001, pct:10, counts:2, label:'1000 nF'},
+        {max:10.00, res:0.01, pct:10, counts:2, label:'10.00 µF'},
+        {max:100.0, res:0.1, pct:10, counts:2, label:'100.0 µF'},
+        {max:500, res:1, pct:10, counts:2, label:'500 µF'}
+      ]},
+    AC_A: { nombre:'Amperímetro AC True-rms', unidad:'A', acCaveat:true,
+      rangos:[
+        {max:6.000, res:0.001, pct:1.5, counts:3, label:'6.000 A'},
+        {max:10.00, res:0.01, pct:1.5, counts:3, label:'10.00 A'}
+      ]},
+    DC_A: { nombre:'Amperímetro DC', unidad:'A', acCaveat:false,
+      rangos:[
+        {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 A'},
+        {max:10.00, res:0.01, pct:1.0, counts:3, label:'10.00 A'}
+      ]},
+    HZ: { nombre:'Frecuencímetro', unidad:'Hz', acCaveat:false,
+      rangos:[
+        {max:99.99, res:0.01, pct:0.1, counts:2, label:'99.99 Hz'},
+        {max:999.9, res:0.1, pct:0.1, counts:2, label:'999.9 Hz'},
+        {max:9999, res:1, pct:0.1, counts:2, label:'9.999 kHz'},
+        {max:50000, res:10, pct:0.1, counts:2, label:'50.00 kHz'}
+      ]}
+  };
+
+  // Unidades seleccionables por función, con el factor que convierte el
+  // valor escrito (Paso 01) a la unidad base de la tabla anterior.
+  const FLUKE_UNIDADES = {
+    'V': [{label:'mV', factor:0.001}, {label:'V', factor:1, base:true}],
+    'Ω': [{label:'Ω', factor:1, base:true}, {label:'kΩ', factor:1000}, {label:'MΩ', factor:1000000}],
+    'A': [{label:'mA', factor:0.001}, {label:'A', factor:1, base:true}],
+    'µF': [{label:'pF', factor:0.000001}, {label:'nF', factor:0.001}, {label:'µF', factor:1, base:true}],
+    'Hz': [{label:'Hz', factor:1, base:true}, {label:'kHz', factor:1000}]
+  };
+
+  // Busca el rango que corresponde a "valor" (ya en la unidad base) y
+  // devuelve el error instrumental CRUDO (sin redondear) según la fórmula
+  // ± (% de lectura + cuentas), junto con los datos de trazabilidad
+  // (rango detectado, resolución, fórmula, aviso de <1% del rango).
+  function calcularPInstrumentalCrudo(funcKey, valor, bandaKey){
+    const cfg = FLUKE_FUNCIONES[funcKey];
+    const absVal = Math.abs(valor);
+    const eps = 1e-9;
+    let rango = null;
+    for (const r of cfg.rangos){
+      if (absVal <= r.max + eps){ rango = r; break; }
+    }
+    if (!rango){
+      const maxLabel = cfg.rangos[cfg.rangos.length - 1].label;
+      return { error: `La media de la serie supera el rango máximo especificado para ${cfg.nombre} (${maxLabel}).` };
+    }
+    let pct, counts;
+    if (cfg.bandas){
+      const banda = cfg.bandas.find(b => b.key === bandaKey);
+      if (!banda) return { error: 'Seleccioná la banda de frecuencia.' };
+      pct = banda.pct; counts = banda.counts;
+    } else {
+      pct = rango.pct; counts = rango.counts;
+    }
+    const pCrudo = (pct / 100) * absVal + counts * rango.res;
+    let caveat = null;
+    if (cfg.acCaveat && absVal < 0.01 * rango.max - eps){
+      caveat = 'La media está por debajo del 1 % del rango: el fabricante no garantiza la exactitud en esta zona (nota [1] de la Tabla 1).';
+    }
+    return { pCrudo, rangoLabel: rango.label, resolucion: rango.res, pct, counts, caveat, tipico: !!cfg.tipico };
+  }
+
 
   function calcularEstadisticas(datos, precision){
     const n = datos.length;
@@ -737,6 +897,7 @@
   // ---------- Estado de la aplicación ----------
 
   let mediciones = [];
+  let modoP = 'manual';
 
   const inputPrecision = document.getElementById('precision');
   const inputMedicion = document.getElementById('medicion');
@@ -749,6 +910,47 @@
   const msgPrecision = document.getElementById('msg-precision');
   const mediaParcialEl = document.getElementById('media-parcial');
   const mediaParcialValorEl = document.getElementById('media-parcial-valor');
+
+  const selModoP = document.getElementById('modo-p');
+  const bloqueManual = document.getElementById('bloque-manual');
+  const bloqueFluke = document.getElementById('bloque-fluke');
+  const selFlukeFuncion = document.getElementById('fluke-funcion');
+  const campoFlukeBanda = document.getElementById('fluke-campo-banda');
+  const selFlukeBanda = document.getElementById('fluke-banda');
+  const selFlukeUnidad = document.getElementById('fluke-unidad');
+  const flukeInfoRango = document.getElementById('fluke-info-rango');
+
+  function actualizarBloqueFluke(){
+    const cfg = FLUKE_FUNCIONES[selFlukeFuncion.value];
+    if (cfg.bandas){
+      campoFlukeBanda.classList.remove('oculto');
+      selFlukeBanda.innerHTML = cfg.bandas.map(b => `<option value="${b.key}">${b.label}</option>`).join('');
+    } else {
+      campoFlukeBanda.classList.add('oculto');
+      selFlukeBanda.innerHTML = '';
+    }
+    const unidades = FLUKE_UNIDADES[cfg.unidad];
+    selFlukeUnidad.innerHTML = unidades.map(u => `<option value="${u.label}">${u.label}</option>`).join('');
+    const base = unidades.find(u => u.base) || unidades[0];
+    selFlukeUnidad.value = base.label;
+    flukeInfoRango.classList.add('oculto');
+  }
+  selFlukeFuncion.addEventListener('change', actualizarBloqueFluke);
+  actualizarBloqueFluke();
+
+  selModoP.addEventListener('change', () => {
+    modoP = selModoP.value;
+    if (modoP === 'fluke'){
+      bloqueManual.classList.add('oculto');
+      bloqueFluke.classList.remove('oculto');
+    } else {
+      bloqueFluke.classList.add('oculto');
+      bloqueManual.classList.remove('oculto');
+    }
+    msgPrecision.classList.remove('error');
+    msgPrecision.textContent = '';
+    renderLista();
+  });
 
   function renderLista(){
     listaEl.innerHTML = '';
@@ -768,7 +970,8 @@
       listaEl.appendChild(chip);
     });
     contadorEl.textContent = `${mediciones.length} medición(es) registrada(s) (mínimo 2)`;
-    btnCalcular.disabled = !(mediciones.length >= 2 && inputPrecision.value !== '' && Number(inputPrecision.value) >= 0);
+    const precisionManualLista = inputPrecision.value !== '' && !Number.isNaN(Number(inputPrecision.value)) && Number(inputPrecision.value) >= 0;
+    btnCalcular.disabled = !(mediciones.length >= 2 && (modoP === 'fluke' || precisionManualLista));
 
     // Media aritmética parcial: se muestra apenas hay datos cargados,
     // antes de pasar al paso 2 (resolución del instrumento).
@@ -846,6 +1049,9 @@
     mediciones = [];
     inputPrecision.value = '';
     inputMedicion.value = '';
+    flukeInfoRango.classList.add('oculto');
+    msgPrecision.classList.remove('error', 'advertencia');
+    msgPrecision.textContent = '';
     renderLista();
     document.getElementById('panel-tabla-calculos').classList.add('oculto');
     document.getElementById('panel-resultados').classList.add('oculto');
@@ -859,17 +1065,58 @@
   let ultimoRedondeo = null;
 
   btnCalcular.addEventListener('click', () => {
-    const precision = Number(inputPrecision.value);
-    if (Number.isNaN(precision) || precision < 0){
-      msgPrecision.textContent = 'Ingrese una resolución (apreciación) numérica no negativa.';
-      msgPrecision.classList.add('error');
-      return;
-    }
     if (mediciones.length < 2){
       return;
     }
 
-    const resultados = calcularEstadisticas(mediciones, precision);
+    msgPrecision.classList.remove('error', 'advertencia');
+    msgPrecision.textContent = '';
+
+    let precision;
+    let datosParaCalculo = mediciones;
+
+    if (modoP === 'fluke'){
+      const funcKey = selFlukeFuncion.value;
+      const cfg = FLUKE_FUNCIONES[funcKey];
+      const unidades = FLUKE_UNIDADES[cfg.unidad];
+      const unidadSel = unidades.find(u => u.label === selFlukeUnidad.value) || unidades[0];
+      datosParaCalculo = mediciones.map(v => v * unidadSel.factor);
+      const mediaPrevia = datosParaCalculo.reduce((a, b) => a + b, 0) / datosParaCalculo.length;
+      const bandaKey = cfg.bandas ? selFlukeBanda.value : null;
+      const r = calcularPInstrumentalCrudo(funcKey, mediaPrevia, bandaKey);
+
+      if (r.error){
+        msgPrecision.textContent = r.error;
+        msgPrecision.classList.add('error');
+        flukeInfoRango.classList.add('oculto');
+        return;
+      }
+
+      precision = redondearErrorUnaCifra(r.pCrudo);
+
+      const formulaTexto = cfg.bandas
+        ? `± (${cfg.bandas.find(b => b.key === bandaKey).pct} % + ${cfg.bandas.find(b => b.key === bandaKey).counts} cuentas)`
+        : `± (${r.pct} % + ${r.counts} cuentas)`;
+      flukeInfoRango.innerHTML =
+        `Rango detectado (según x̄ = ${mediaPrevia.toFixed(4)} ${cfg.unidad}): <strong>${r.rangoLabel}</strong> · resolución ${r.resolucion} ${cfg.unidad}<br>` +
+        `Fórmula aplicada: ${formulaTexto}${r.tipico ? ' (valor típico)' : ''} · P crudo = ${r.pCrudo.toFixed(6)} → redondeado a 1 cifra: ${precision}`;
+      flukeInfoRango.classList.remove('oculto');
+
+      if (r.caveat){
+        msgPrecision.textContent = r.caveat;
+        msgPrecision.classList.add('advertencia');
+      }
+    } else {
+      precision = Number(inputPrecision.value);
+      if (Number.isNaN(precision) || precision < 0){
+        msgPrecision.textContent = 'Ingrese una resolución (apreciación) numérica no negativa.';
+        msgPrecision.classList.add('error');
+        return;
+      }
+      flukeInfoRango.classList.add('oculto');
+    }
+
+    const resultados = calcularEstadisticas(datosParaCalculo, precision);
     ultimosResultados = resultados;
 
     // ---- PASO 03: tabla de mediciones (N, valor, d_i, d_i²) ----
@@ -931,7 +1178,7 @@
       ['Varianza muestral (s²)', resultados.varianza.toFixed(10)],
       ['Desviación estándar (σ_(n-1))', resultados.sigmaNMinus1.toFixed(10)],
       ['Error de la media (σ_x)', resultados.sigmaMedia.toFixed(10)],
-      ['Resolución (apreciación) del instrumento (P)', String(precision)]
+      [modoP === 'fluke' ? 'Error instrumental (Fluke 117, Tabla 1) usado como P' : 'Resolución (apreciación) del instrumento (P)', String(precision)]
     ];
     datosGrid.forEach(([etiqueta, valor]) => {
       const div = document.createElement('div');
