@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multímetro Fluke — Error de Medición</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --danger:#E2695A;
+    --danger-soft:rgba(226,105,90,0.14);
+    --warn:#E2B25A;
+    --warn-soft:rgba(226,178,90,0.14);
+    --readout-bg:#0D1712;
+    --readout-fg:#8FE3B0;
+    --readout-fg-soft:#CFEFDC;
+    --readout-border:#23392C;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+  }
+  .instrumento{
+    width:100%;
+    max-width:560px;
+  }
+  header.masthead{
+    margin-bottom:2rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+  h1{
+    font-size:24px;
+    font-weight:600;
+    margin:0 0 0.4rem;
+    letter-spacing:-0.01em;
+  }
+  .masthead p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:14px;
+    max-width:52ch;
+  }
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:1.25rem 1.4rem;
+    margin-bottom:1rem;
+  }
+  .panel-head{
+    display:flex;
+    align-items:baseline;
+    gap:0.6rem;
+    margin-bottom:0.9rem;
+  }
+  .paso-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:2px 7px;
+    letter-spacing:0.04em;
+  }
+  .panel-head h2{
+    font-size:15px;
+    font-weight:600;
+    margin:0;
+  }
+  label.campo-label{
+    display:block;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:0.35rem;
+  }
+  .campo{
+    margin-bottom:0.9rem;
+  }
+  .campo:last-child{ margin-bottom:0; }
+  .fila-valor-e{
+    display:flex;
+    gap:0.5rem;
+  }
+  .fila-valor-e input{ flex:1; }
+  .fila-valor-e select{
+    flex:0 0 auto;
+    width:auto;
+    min-width:4.5rem;
+  }
+  .fila-valor-e button{
+    flex-shrink:0;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    padding:0.55rem 0.7rem;
+  }
+  .hint{
+    font-size:12px;
+    color:var(--ink-faint);
+    margin:0.4rem 0 0;
+  }
+  .hint code{
+    font-family:var(--font-mono);
+    background:var(--surface-2);
+    padding:0 4px;
+    border-radius:3px;
+  }
+  input[type="number"], input[type="text"], select{
+    width:100%;
+    font-family:var(--font-mono);
+    font-size:15px;
+    padding:0.55rem 0.7rem;
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  button{
+    font-family:var(--font-sans);
+    font-size:13.5px;
+    font-weight:500;
+    border-radius:4px;
+    border:1px solid var(--card-border);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.55rem 0.9rem;
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  button:active{ transform:translateY(1px); }
+  button.primario{
+    background:var(--accent);
+    border-color:var(--accent-dark);
+    color:var(--surface-2);
+    font-weight:600;
+  }
+  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
+  .acciones{
+    display:flex;
+    gap:0.6rem;
+    margin-top:1.1rem;
+  }
+  .mensaje{
+    font-size:12.5px;
+    margin-top:0.6rem;
+    padding:0.4rem 0.6rem;
+    border-radius:4px;
+    display:none;
+  }
+  .mensaje.error{ display:block; background:var(--danger-soft); color:var(--danger); }
+  .mensaje.warn{ display:block; background:var(--warn-soft); color:var(--warn); }
+  .oculto{ display:none !important; }
+  .info-rango{
+    background:var(--surface-2);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:0.8rem 1rem;
+    margin-top:0.9rem;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  .info-rango strong{ color:var(--ink); }
+  .readout{
+    background:var(--readout-bg);
+    border:1px solid var(--readout-border);
+    border-radius:6px;
+    padding:1.4rem 1.5rem;
+    text-align:center;
+    margin-top:0.9rem;
+  }
+  .readout .r-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--readout-fg-soft);
+    margin-bottom:0.5rem;
+  }
+  .readout .r-bloque{
+    margin-bottom:1.1rem;
+  }
+  .readout .r-bloque:last-child{ margin-bottom:0; }
+  .readout .r-valor{
+    font-family:var(--font-mono);
+    font-size:28px;
+    font-weight:600;
+    color:var(--readout-fg);
+    letter-spacing:0.02em;
+    word-break:break-word;
+  }
+  .readout .r-valor.compacta{
+    font-size:32px;
+  }
+  .readout .r-valor.rel{
+    font-size:26px;
+  }
+  .readout .r-detalle{
+    margin-top:0.6rem;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--readout-fg-soft);
+  }
+  .separador{
+    border:none;
+    border-top:1px solid var(--readout-border);
+    margin:1.1rem 0;
+  }
+  footer.pie{
+    margin-top:1.5rem;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="instrumento">
+  <header class="masthead">
+    <p class="eyebrow">Instrumento de expresión de resultados</p>
+    <h1>Multímetro Fluke — Error de medición</h1>
+    <p>Elegí el modelo y la función del multímetro, escribí la lectura única de
+    pantalla y la herramienta calcula el error absoluto y relativo según la
+    tabla de exactitud del manual correspondiente.</p>
+  </header>
+  <section class="panel">
+    <div class="panel-head">
+      <span class="paso-badge">DATOS</span>
+      <h2>Modelo, función y lectura</h2>
+    </div>
+    <div class="campo">
+      <label class="campo-label" for="modelo">Modelo de multímetro</label>
+      <select id="modelo">
+        <option value="F117">Fluke 117</option>
+        <option value="F111">Fluke 111</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label class="campo-label" for="funcion">Función del multímetro</label>
+      <select id="funcion"></select>
+    </div>
+    <div class="campo oculto" id="campo-banda">
+      <label class="campo-label" for="banda">Banda de frecuencia</label>
+      <select id="banda"></select>
+    </div>
+    <div class="campo">
+      <label class="campo-label" id="label-lectura" for="lectura">Lectura de pantalla</label>
+      <div class="fila-valor-e">
+        <input type="text" id="lectura" inputmode="decimal" enterkeyhint="done" placeholder="ej. 12.34" />
+        <select id="unidad-lectura"></select>
+        <button type="button" id="btn-cientifica" title="Inserta &quot;e&quot; en el campo">×10ⁿ (e)</button>
+      </div>
+      <p class="hint" id="conversion-ayuda"></p>
+    </div>
+    <p class="hint">
+      El rango (y por lo tanto la resolución) se detecta automáticamente a partir de
+      la magnitud de la lectura ya convertida a la unidad base, igual que el autorango
+      del multímetro. Elegí la unidad tal como aparece en la pantalla del Fluke (ej.
+      nF si el display muestra nanofaradios) — la conversión interna es automática.
+      Fuente: Table 1, Accuracy Specifications — Fluke 114/115/117 Users Manual
+      (modelo 117) y Fluke 110/111/112 Users Manual (modelo 111).
+    </p>
+    <div class="mensaje error" id="msg-error"></div>
+    <div class="acciones">
+      <button class="primario" id="btn-calcular">Calcular error</button>
+      <button type="button" id="btn-reiniciar">Reiniciar</button>
+    </div>
+    <div class="info-rango oculto" id="info-rango"></div>
+    <div class="mensaje warn oculto" id="msg-caveat"></div>
+  </section>
+  <section class="readout oculto" id="panel-resultado">
+    <div class="r-bloque">
+      <div class="r-label">Resultado</div>
+      <div class="r-valor compacta" id="r-compacta">—</div>
+    </div>
+    <hr class="separador">
+    <div class="r-bloque">
+      <div class="r-label">Error relativo</div>
+      <div class="r-valor rel" id="r-relativo">—</div>
+    </div>
+    <div class="r-detalle" id="r-detalle"></div>
+  </section>
+  <footer class="pie">Multímetro Fluke (117 / 111) · Error absoluto y relativo (V ± E, %) · UMSS</footer>
+</div>
+<script>
+(function(){
+  // ---------- Redondeo bancario, idéntico al resto de la suite ----------
+  function roundHalfEven(value, decimals){
+    const factor = Math.pow(10, decimals);
+    const scaled = value * factor;
+    const piso = Math.floor(scaled);
+    const resto = scaled - piso;
+    const eps = 1e-9;
+    let resultado;
+    if (Math.abs(resto - 0.5) < eps){
+      resultado = (piso % 2 === 0) ? piso : piso + 1;
+    } else {
+      resultado = Math.round(scaled);
+    }
+    return resultado / factor;
+  }
+
+  // Redondea |valor| a n cifras significativas (bancario) y devuelve el
+  // exponente de ingeniería (múltiplo de 3) y la cantidad de decimales de
+  // la mantisa, además del texto ya formateado. Misma lógica que en
+  // cifras_significativas_rev.html / resultado_medicion.html, generalizada
+  // para cualquier n (acá se usa n=1 para el error absoluto y n=2 para el
+  // error relativo porcentual).
+  function calcularComponentes(valor, n){
+    const signo = valor < 0 ? -1 : 1;
+    const absVal = Math.abs(valor);
+    if (absVal === 0){
+      return { exponente: 0, decimalesMantisa: n > 1 ? n - 1 : 0, texto: (0).toFixed(n > 1 ? n - 1 : 0) };
+    }
+    const d = Math.floor(Math.log10(absVal)) + 1;
+    const decimales = n - d;
+    let redondeado = roundHalfEven(absVal, decimales);
+    let dFinal = redondeado === 0 ? 1 : Math.floor(Math.log10(redondeado)) + 1;
+    let decimalesFinal = n - dFinal;
+    let exponente, decimalesMantisa, textoMantisa;
+    if (decimalesFinal < 0){
+      const exponenteCientifico = dFinal - 1;
+      exponente = Math.floor(exponenteCientifico / 3) * 3;
+      let digitosEnteros = exponenteCientifico - exponente + 1;
+      if (digitosEnteros > n){
+        exponente += 3;
+        digitosEnteros = exponenteCientifico - exponente + 1;
+      }
+      decimalesMantisa = Math.max(n - digitosEnteros, 0);
+      let mantisa = redondeado / Math.pow(10, exponente);
+      textoMantisa = decimalesMantisa > 0 ? mantisa.toFixed(decimalesMantisa) : mantisa.toFixed(0);
+      if (Math.abs(parseFloat(textoMantisa)) >= 1000){
+        exponente += 3;
+        digitosEnteros = exponenteCientifico - exponente + 1;
+        decimalesMantisa = Math.max(n - digitosEnteros, 0);
+        mantisa = redondeado / Math.pow(10, exponente);
+        textoMantisa = decimalesMantisa > 0 ? mantisa.toFixed(decimalesMantisa) : mantisa.toFixed(0);
+      }
+    } else {
+      exponente = 0;
+      decimalesMantisa = decimalesFinal;
+      textoMantisa = decimalesMantisa > 0 ? redondeado.toFixed(decimalesMantisa) : redondeado.toFixed(0);
+    }
+    return { exponente, decimalesMantisa, texto: (signo < 0 ? '-' : '') + textoMantisa };
+  }
+
+  function formatearConComponentes(valor, exponente, decimalesMantisa){
+    const escala = Math.pow(10, exponente);
+    const escalado = valor / escala;
+    const redondeado = roundHalfEven(escalado, decimalesMantisa);
+    return decimalesMantisa > 0 ? redondeado.toFixed(decimalesMantisa) : redondeado.toFixed(0);
+  }
+
+  // ---------- Tabla 1. Accuracy Specifications — Fluke 114/115/117 ----------
+  // Cada función tiene una lista de rangos ordenados ascendentemente por su
+  // valor máximo (en la unidad base indicada). El primer rango cuyo máximo
+  // sea >= |lectura| es el que se usa (autorango). Si la función tiene
+  // "bandas" (depende de la frecuencia de la señal, no de la magnitud),
+  // el %/cuentas viene de la banda elegida, no del rango.
+  // Cada función tiene una lista de rangos ordenados ascendentemente por su
+  // valor máximo (en la unidad base indicada). El primer rango cuyo máximo
+  // sea >= |lectura| es el que se usa (autorango). Si la función tiene
+  // "bandas" (depende de la frecuencia de la señal, no de la magnitud),
+  // el %/cuentas viene de la banda elegida, no del rango.
+  // "acCaveatPct" = aviso de "por debajo de X% del rango" (varía según
+  // modelo: 1% en el 117, 5% en el 111). "acCaveatAbsoluto" = aviso con un
+  // piso fijo en la unidad base, independiente del rango (ej. Amperios AC
+  // del 111: "no especificado por debajo de 3 A").
+  const MODELOS = {
+    F117: { nombre: 'Fluke 117', funciones: {
+      DC_V: { nombre:'Voltímetro DC', unidad:'V',
+        rangos:[
+          {max:0.6, res:0.0001, pct:0.5, counts:2, label:'600.0 mV'},
+          {max:6.000, res:0.001, pct:0.5, counts:2, label:'6.000 V'},
+          {max:60.00, res:0.01, pct:0.5, counts:2, label:'60.00 V'},
+          {max:600.0, res:0.1, pct:0.5, counts:2, label:'600.0 V'}
+        ]},
+      AC_V: { nombre:'Voltímetro AC True-rms', unidad:'V', acCaveatPct:0.01,
+        rangos:[
+          {max:0.6, res:0.0001, label:'600.0 mV'},
+          {max:6.000, res:0.001, label:'6.000 V'},
+          {max:60.00, res:0.01, label:'60.00 V'},
+          {max:600.0, res:0.1, label:'600.0 V'}
+        ],
+        bandas:[
+          {key:'b1', label:'45 Hz a 500 Hz', pct:1.0, counts:3},
+          {key:'b2', label:'500 Hz a 1 kHz', pct:2.0, counts:3}
+        ]},
+      LOZ_V: { nombre:'Auto-V LoZ True-rms', unidad:'V',
+        rangos:[{max:600.0, res:0.1, label:'600.0 V'}],
+        bandas:[
+          {key:'b1', label:'DC o 45 Hz a 500 Hz', pct:2.0, counts:3},
+          {key:'b2', label:'500 Hz a 1 kHz', pct:4.0, counts:3}
+        ]},
+      OHM: { nombre:'Óhmetro', unidad:'Ω',
+        rangos:[
+          {max:600.0, res:0.1, pct:0.9, counts:2, label:'600.0 Ω'},
+          {max:6000, res:1, pct:0.9, counts:1, label:'6.000 kΩ'},
+          {max:60000, res:10, pct:0.9, counts:1, label:'60.00 kΩ'},
+          {max:600000, res:100, pct:0.9, counts:1, label:'600.0 kΩ'},
+          {max:6000000, res:1000, pct:0.9, counts:1, label:'6.000 MΩ'},
+          {max:40000000, res:10000, pct:5, counts:2, label:'40.00 MΩ'}
+        ]},
+      DIODE: { nombre:'Prueba de diodo', unidad:'V',
+        rangos:[{max:2.000, res:0.001, pct:0.9, counts:2, label:'2.000 V'}]},
+      CAP: { nombre:'Capacímetro', unidad:'µF',
+        rangos:[
+          {max:1, res:0.001, pct:1.9, counts:2, label:'1000 nF'},
+          {max:10.00, res:0.01, pct:1.9, counts:2, label:'10.00 µF'},
+          {max:100.0, res:0.1, pct:1.9, counts:2, label:'100.0 µF'},
+          {max:1000, res:1, pct:1.9, counts:2, label:'9999 µF (100–1000 µF)'},
+          {max:9999, res:1, pct:5, counts:20, label:'9999 µF (>1000 µF)'}
+        ]},
+      LOZ_CAP: { nombre:'Capacímetro Lo-Z (power-up option)', unidad:'µF', tipico:true,
+        rangos:[
+          {max:1, res:0.001, pct:10, counts:2, label:'1000 nF'},
+          {max:10.00, res:0.01, pct:10, counts:2, label:'10.00 µF'},
+          {max:100.0, res:0.1, pct:10, counts:2, label:'100.0 µF'},
+          {max:500, res:1, pct:10, counts:2, label:'500 µF'}
+        ]},
+      AC_A: { nombre:'Amperímetro AC True-rms', unidad:'A', acCaveatPct:0.01,
+        rangos:[
+          {max:6.000, res:0.001, pct:1.5, counts:3, label:'6.000 A'},
+          {max:10.00, res:0.01, pct:1.5, counts:3, label:'10.00 A'}
+        ]},
+      DC_A: { nombre:'Amperímetro DC', unidad:'A',
+        rangos:[
+          {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 A'},
+          {max:10.00, res:0.01, pct:1.0, counts:3, label:'10.00 A'}
+        ]},
+      HZ: { nombre:'Frecuencímetro', unidad:'Hz',
+        rangos:[
+          {max:99.99, res:0.01, pct:0.1, counts:2, label:'99.99 Hz'},
+          {max:999.9, res:0.1, pct:0.1, counts:2, label:'999.9 Hz'},
+          {max:9999, res:1, pct:0.1, counts:2, label:'9.999 kHz'},
+          {max:50000, res:10, pct:0.1, counts:2, label:'50.00 kHz'}
+        ]}
+    }},
+    F111: { nombre: 'Fluke 111', funciones: {
+      // El 111 no tiene Auto-V LoZ ni Capacímetro Lo-Z (exclusivos del 115/117).
+      // El rango "6000 mV" de la hoja de datos es solo de modo manual (nota 4
+      // del manual) y numéricamente idéntico al rango 6.000V en autorango
+      // (misma resolución 0.001V, misma fórmula), así que no se agrega aparte.
+      DC_V: { nombre:'Voltímetro DC', unidad:'V',
+        rangos:[
+          {max:6.000, res:0.001, pct:0.7, counts:2, label:'6.000 V'},
+          {max:60.00, res:0.01, pct:0.7, counts:2, label:'60.00 V'},
+          {max:600.0, res:0.1, pct:0.7, counts:2, label:'600.0 V'}
+        ]},
+      AC_V: { nombre:'Voltímetro AC True-rms', unidad:'V', acCaveatPct:0.05,
+        rangos:[
+          {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 V'},
+          {max:60.00, res:0.01, pct:1.0, counts:3, label:'60.00 V'},
+          {max:600.0, res:0.1, pct:1.0, counts:3, label:'600.0 V'}
+        ]},
+      OHM: { nombre:'Óhmetro', unidad:'Ω',
+        rangos:[
+          {max:600.0, res:0.1, pct:0.9, counts:2, label:'600.0 Ω'},
+          {max:6000, res:1, pct:0.9, counts:1, label:'6.000 kΩ'},
+          {max:60000, res:10, pct:0.9, counts:1, label:'60.00 kΩ'},
+          {max:600000, res:100, pct:0.9, counts:1, label:'600.0 kΩ'},
+          {max:6000000, res:1000, pct:0.9, counts:1, label:'6.000 MΩ'},
+          {max:40000000, res:10000, pct:1.5, counts:3, label:'40.00 MΩ'}
+        ]},
+      DIODE: { nombre:'Prueba de diodo', unidad:'V',
+        rangos:[{max:2.200, res:0.001, pct:0.9, counts:2, label:'2.200 V'}]},
+      CAP: { nombre:'Capacímetro', unidad:'µF',
+        rangos:[
+          {max:1, res:0.001, pct:1.9, counts:2, label:'1000 nF'},
+          {max:10.00, res:0.01, pct:1.9, counts:2, label:'10.00 µF'},
+          {max:100.0, res:0.1, pct:1.9, counts:2, label:'100.0 µF'},
+          {max:1000, res:1, pct:1.9, counts:2, label:'10000 µF (100–1000 µF)'},
+          {max:10000, res:1, pct:10, counts:90, label:'10000 µF (>1000 µF, típico)', tipicoTramo:true}
+        ]},
+      AC_A: { nombre:'Amperímetro AC True-rms', unidad:'A', acCaveatAbsoluto:3,
+        rangos:[{max:10.00, res:0.01, pct:1.5, counts:3, label:'10.00 A'}]},
+      DC_A: { nombre:'Amperímetro DC', unidad:'A',
+        rangos:[
+          {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 A'},
+          {max:10.00, res:0.01, pct:1.0, counts:3, label:'10.00 A'}
+        ]},
+      HZ: { nombre:'Frecuencímetro', unidad:'Hz',
+        rangos:[
+          {max:99.99, res:0.01, pct:0.1, counts:2, label:'99.99 Hz'},
+          {max:999.9, res:0.1, pct:0.1, counts:2, label:'999.9 Hz'},
+          {max:9999, res:1, pct:0.1, counts:2, label:'9.999 kHz'},
+          {max:50000, res:10, pct:0.1, counts:2, label:'50.00 kHz'}
+        ]}
+    }}
+  };
+
+  function calcularError(modeloKey, funcKey, valor, bandaKey){
+    const cfg = MODELOS[modeloKey].funciones[funcKey];
+    const absVal = Math.abs(valor);
+    const eps = 1e-9;
+    let rango = null;
+    for (const r of cfg.rangos){
+      if (absVal <= r.max + eps){ rango = r; break; }
+    }
+    if (!rango){
+      const maxLabel = cfg.rangos[cfg.rangos.length - 1].label;
+      return { error: `El valor supera el rango máximo especificado para ${cfg.nombre} en ${MODELOS[modeloKey].nombre} (${maxLabel}).` };
+    }
+    let pct, counts;
+    if (cfg.bandas){
+      const banda = cfg.bandas.find(b => b.key === bandaKey);
+      if (!banda) return { error: 'Seleccioná la banda de frecuencia.' };
+      pct = banda.pct; counts = banda.counts;
+    } else {
+      pct = rango.pct; counts = rango.counts;
+    }
+    const absError = (pct / 100) * absVal + counts * rango.res;
+    const compError = calcularComponentes(absError, 1);
+    const textoMedicion = formatearConComponentes(valor, compError.exponente, compError.decimalesMantisa);
+    let relTexto = null;
+    if (absVal > 0){
+      const relError = (absError / absVal) * 100;
+      relTexto = calcularComponentes(relError, 2).texto;
+    }
+    let caveat = null;
+    if (cfg.acCaveatPct && absVal < cfg.acCaveatPct * rango.max - eps){
+      caveat = `La lectura está por debajo del ${(cfg.acCaveatPct * 100).toFixed(0)} % del rango: el fabricante no garantiza la exactitud en esta zona.`;
+    } else if (cfg.acCaveatAbsoluto && absVal < cfg.acCaveatAbsoluto - eps){
+      caveat = `La lectura está por debajo de ${cfg.acCaveatAbsoluto} ${cfg.unidad}: el fabricante no especifica la exactitud en esta zona.`;
+    }
+    return {
+      rangoLabel: rango.label, resolucion: rango.res, pct, counts,
+      exponente: compError.exponente, decimalesMantisa: compError.decimalesMantisa,
+      textoError: compError.texto, textoMedicion, relTexto, caveat, tipico: !!cfg.tipico
+    };
+  }
+
+  // Unidades seleccionables por función, con el factor que convierte el
+  // valor escrito a la unidad base (la que usan las tablas de MODELOS).
+  // Ej.: si el usuario escribe "222" y elige "nF", el valor en la unidad
+  // base (µF) es 222 * 0.001 = 0.222 µF. El índice marcado con
+  // "base:true" es el que se preselecciona por defecto.
+  const UNIDADES_SELECCIONABLES = {
+    'V': [
+      {label:'mV', factor:0.001},
+      {label:'V', factor:1, base:true}
+    ],
+    'Ω': [
+      {label:'Ω', factor:1, base:true},
+      {label:'kΩ', factor:1000},
+      {label:'MΩ', factor:1000000}
+    ],
+    'A': [
+      {label:'mA', factor:0.001},
+      {label:'A', factor:1, base:true}
+    ],
+    'µF': [
+      {label:'pF', factor:0.000001},
+      {label:'nF', factor:0.001},
+      {label:'µF', factor:1, base:true}
+    ],
+    'Hz': [
+      {label:'Hz', factor:1, base:true},
+      {label:'kHz', factor:1000}
+    ]
+  };
+  function formatoAyuda(n){
+    if (n === 0) return '0';
+    const abs = Math.abs(n);
+    if (abs >= 1e6 || abs < 1e-6) return n.toExponential(3);
+    return parseFloat(n.toPrecision(6)).toString();
+  }
+
+  // ---------- UI ----------
+  const selModelo = document.getElementById('modelo');
+  const selFuncion = document.getElementById('funcion');
+  const campoBanda = document.getElementById('campo-banda');
+  const selBanda = document.getElementById('banda');
+  const labelLectura = document.getElementById('label-lectura');
+  const selUnidad = document.getElementById('unidad-lectura');
+  const conversionAyuda = document.getElementById('conversion-ayuda');
+  const inputLectura = document.getElementById('lectura');
+  const btnCientifica = document.getElementById('btn-cientifica');
+  const btnCalcular = document.getElementById('btn-calcular');
+  const btnReiniciar = document.getElementById('btn-reiniciar');
+  const msgError = document.getElementById('msg-error');
+  const infoRango = document.getElementById('info-rango');
+  const msgCaveat = document.getElementById('msg-caveat');
+  const panelResultado = document.getElementById('panel-resultado');
+  const rCompacta = document.getElementById('r-compacta');
+  const rRelativo = document.getElementById('r-relativo');
+  const rDetalle = document.getElementById('r-detalle');
+
+  function funcionesDelModelo(){
+    return MODELOS[selModelo.value].funciones;
+  }
+
+  function actualizarFunciones(){
+    const funciones = funcionesDelModelo();
+    const valorPrevio = selFuncion.value;
+    selFuncion.innerHTML = Object.keys(funciones)
+      .map(key => `<option value="${key}">${funciones[key].nombre}</option>`).join('');
+    // Si la función previamente elegida existe también en el nuevo modelo,
+    // se mantiene seleccionada; si no (ej. Auto-V LoZ al pasar a un 111),
+    // se cae a la primera función disponible.
+    if (valorPrevio && funciones[valorPrevio]) selFuncion.value = valorPrevio;
+    actualizarUI();
+  }
+  selModelo.addEventListener('change', actualizarFunciones);
+
+  function actualizarUI(){
+    const cfg = funcionesDelModelo()[selFuncion.value];
+    labelLectura.textContent = 'Lectura de pantalla';
+    const unidades = UNIDADES_SELECCIONABLES[cfg.unidad];
+    selUnidad.innerHTML = unidades.map(u => `<option value="${u.label}">${u.label}</option>`).join('');
+    const base = unidades.find(u => u.base) || unidades[0];
+    selUnidad.value = base.label;
+    if (cfg.bandas){
+      campoBanda.classList.remove('oculto');
+      selBanda.innerHTML = cfg.bandas.map(b => `<option value="${b.key}">${b.label}</option>`).join('');
+    } else {
+      campoBanda.classList.add('oculto');
+      selBanda.innerHTML = '';
+    }
+    panelResultado.classList.add('oculto');
+    infoRango.classList.add('oculto');
+    msgCaveat.classList.add('oculto');
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+    actualizarConversion();
+  }
+  function factorUnidadActual(){
+    const cfg = funcionesDelModelo()[selFuncion.value];
+    const unidades = UNIDADES_SELECCIONABLES[cfg.unidad];
+    const u = unidades.find(u => u.label === selUnidad.value) || unidades[0];
+    return u.factor;
+  }
+  function actualizarConversion(){
+    const cfg = funcionesDelModelo()[selFuncion.value];
+    const valorRaw = inputLectura.value.trim().replace(',', '.');
+    const valor = Number(valorRaw);
+    if (valorRaw === '' || Number.isNaN(valor)){
+      conversionAyuda.textContent = '';
+      return;
+    }
+    const valorBase = valor * factorUnidadActual();
+    conversionAyuda.textContent = `= ${formatoAyuda(valorBase)} ${cfg.unidad} (unidad base)`;
+  }
+  inputLectura.addEventListener('input', actualizarConversion);
+  selUnidad.addEventListener('change', actualizarConversion);
+  selFuncion.addEventListener('change', actualizarUI);
+  actualizarFunciones();
+
+  function insertarE(input){
+    const val = input.value;
+    if (/[eE]/.test(val)) { input.focus(); return; }
+    const pos = input.selectionStart ?? val.length;
+    input.value = val.slice(0, pos) + 'e' + val.slice(pos);
+    input.focus();
+    input.setSelectionRange(pos + 1, pos + 1);
+  }
+  btnCientifica.addEventListener('click', () => insertarE(inputLectura));
+
+  function calcular(){
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+    infoRango.classList.add('oculto');
+    msgCaveat.classList.add('oculto');
+    panelResultado.classList.add('oculto');
+
+    const funcKey = selFuncion.value;
+    const cfg = funcionesDelModelo()[funcKey];
+    const lecturaRaw = inputLectura.value.trim().replace(',', '.');
+    const lecturaEnUnidadElegida = Number(lecturaRaw);
+
+    if (lecturaRaw === '' || Number.isNaN(lecturaEnUnidadElegida)){
+      msgError.textContent = 'Ingrese un valor numérico válido para la lectura de pantalla.';
+      msgError.classList.add('error');
+      return;
+    }
+
+    const lectura = lecturaEnUnidadElegida * factorUnidadActual();
+    const bandaKey = cfg.bandas ? selBanda.value : null;
+    const r = calcularError(selModelo.value, funcKey, lectura, bandaKey);
+
+    if (r.error){
+      msgError.textContent = r.error;
+      msgError.classList.add('error');
+      return;
+    }
+
+    const formulaTexto = cfg.bandas
+      ? `± (${cfg.bandas.find(b => b.key === bandaKey).pct} % + ${cfg.bandas.find(b => b.key === bandaKey).counts} cuentas)`
+      : `± (${r.pct} % + ${r.counts} cuentas)`;
+    infoRango.innerHTML =
+      `Rango detectado: <strong>${r.rangoLabel}</strong> · resolución ${r.resolucion} ${cfg.unidad}<br>` +
+      `Fórmula aplicada: ${formulaTexto}${r.tipico ? ' (valor típico)' : ''}`;
+    infoRango.classList.remove('oculto');
+
+    if (r.caveat){
+      msgCaveat.textContent = r.caveat;
+      msgCaveat.classList.remove('warn');
+      msgCaveat.classList.add('warn');
+      msgCaveat.classList.remove('oculto');
+    }
+
+    if (r.exponente !== 0){
+      rCompacta.textContent = `(${r.textoMedicion} ± ${r.textoError})e${r.exponente} ${cfg.unidad}`;
+    } else {
+      rCompacta.textContent = `(${r.textoMedicion} ± ${r.textoError}) ${cfg.unidad}`;
+    }
+    rRelativo.textContent = r.relTexto !== null ? `${r.relTexto} %` : '— (lectura igual a 0)';
+    rDetalle.textContent = `${MODELOS[selModelo.value].nombre} · ${cfg.nombre} · lectura original: ${lecturaRaw} ${selUnidad.value}${cfg.bandas ? ' · banda: ' + cfg.bandas.find(b => b.key === bandaKey).label : ''}`;
+    panelResultado.classList.remove('oculto');
+  }
+
+  btnCalcular.addEventListener('click', calcular);
+  inputLectura.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      calcular();
+    }
+  });
+  btnReiniciar.addEventListener('click', () => {
+    inputLectura.value = '';
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+    infoRango.classList.add('oculto');
+    msgCaveat.classList.add('oculto');
+    panelResultado.classList.add('oculto');
+    conversionAyuda.textContent = '';
+    inputLectura.focus();
+  });
+
+  inputLectura.focus();
+})();
+</script>
+</body>
+</html>
