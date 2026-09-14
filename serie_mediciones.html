@@ -485,19 +485,14 @@
     </div>
 
     <div id="bloque-fluke" class="oculto" style="margin-top:0.9rem;">
-      <label class="campo-label" for="fluke-funcion">Función del multímetro</label>
-      <select id="fluke-funcion">
-        <option value="DC_V">Voltímetro DC</option>
-        <option value="AC_V">Voltímetro AC (True-rms)</option>
-        <option value="LOZ_V">Auto-V LoZ (True-rms)</option>
-        <option value="OHM">Óhmetro</option>
-        <option value="DIODE">Prueba de diodo</option>
-        <option value="CAP">Capacímetro</option>
-        <option value="LOZ_CAP">Capacímetro Lo-Z (power-up option)</option>
-        <option value="AC_A">Amperímetro AC (True-rms)</option>
-        <option value="DC_A">Amperímetro DC</option>
-        <option value="HZ">Frecuencímetro (Hz)</option>
+      <label class="campo-label" for="fluke-modelo">Modelo de multímetro</label>
+      <select id="fluke-modelo">
+        <option value="F117">Fluke 117</option>
+        <option value="F111">Fluke 111</option>
       </select>
+
+      <label class="campo-label" for="fluke-funcion" style="margin-top:0.7rem;">Función del multímetro</label>
+      <select id="fluke-funcion"></select>
 
       <div id="fluke-campo-banda" class="oculto" style="margin-top:0.7rem;">
         <label class="campo-label" for="fluke-banda">Banda de frecuencia</label>
@@ -510,9 +505,9 @@
       </div>
 
       <p class="hint" style="font-size:12px; opacity:0.7; margin:0.5rem 0 0;">
-        P se calcula con la fórmula de la Tabla 1 (± % de lectura + cuentas) usando la media
-        de tus mediciones (x̄) como valor representativo, con el rango detectado automáticamente
-        a partir de esa media.
+        P se calcula con la fórmula de exactitud del modelo elegido (± % de lectura + cuentas)
+        usando la media de tus mediciones (x̄) como valor representativo, con el rango detectado
+        automáticamente a partir de esa media.
       </p>
       <div class="oculto" id="fluke-info-rango" style="margin-top:0.7rem; background:var(--surface-2); border:1px solid var(--card-border); border-radius:6px; padding:0.7rem 0.9rem; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-soft);"></div>
     </div>
@@ -752,74 +747,123 @@
   // cifra significativa lo hace la función redondearErrorUnaCifra() que ya
   // existe más arriba en este mismo archivo, para no duplicar convenciones
   // de redondeo distintas dentro del mismo programa.
-  const FLUKE_FUNCIONES = {
-    DC_V: { nombre:'Voltímetro DC', unidad:'V', acCaveat:false,
-      rangos:[
-        {max:0.6, res:0.0001, pct:0.5, counts:2, label:'600.0 mV'},
-        {max:6.000, res:0.001, pct:0.5, counts:2, label:'6.000 V'},
-        {max:60.00, res:0.01, pct:0.5, counts:2, label:'60.00 V'},
-        {max:600.0, res:0.1, pct:0.5, counts:2, label:'600.0 V'}
-      ]},
-    AC_V: { nombre:'Voltímetro AC True-rms', unidad:'V', acCaveat:true,
-      rangos:[
-        {max:0.6, res:0.0001, label:'600.0 mV'},
-        {max:6.000, res:0.001, label:'6.000 V'},
-        {max:60.00, res:0.01, label:'60.00 V'},
-        {max:600.0, res:0.1, label:'600.0 V'}
-      ],
-      bandas:[
-        {key:'b1', label:'45 Hz a 500 Hz', pct:1.0, counts:3},
-        {key:'b2', label:'500 Hz a 1 kHz', pct:2.0, counts:3}
-      ]},
-    LOZ_V: { nombre:'Auto-V LoZ True-rms', unidad:'V', acCaveat:false,
-      rangos:[{max:600.0, res:0.1, label:'600.0 V'}],
-      bandas:[
-        {key:'b1', label:'DC o 45 Hz a 500 Hz', pct:2.0, counts:3},
-        {key:'b2', label:'500 Hz a 1 kHz', pct:4.0, counts:3}
-      ]},
-    OHM: { nombre:'Óhmetro', unidad:'Ω', acCaveat:false,
-      rangos:[
-        {max:600.0, res:0.1, pct:0.9, counts:2, label:'600.0 Ω'},
-        {max:6000, res:1, pct:0.9, counts:1, label:'6.000 kΩ'},
-        {max:60000, res:10, pct:0.9, counts:1, label:'60.00 kΩ'},
-        {max:600000, res:100, pct:0.9, counts:1, label:'600.0 kΩ'},
-        {max:6000000, res:1000, pct:0.9, counts:1, label:'6.000 MΩ'},
-        {max:40000000, res:10000, pct:5, counts:2, label:'40.00 MΩ'}
-      ]},
-    DIODE: { nombre:'Prueba de diodo', unidad:'V', acCaveat:false,
-      rangos:[{max:2.000, res:0.001, pct:0.9, counts:2, label:'2.000 V'}]},
-    CAP: { nombre:'Capacímetro', unidad:'µF', acCaveat:false,
-      rangos:[
-        {max:1, res:0.001, pct:1.9, counts:2, label:'1000 nF'},
-        {max:10.00, res:0.01, pct:1.9, counts:2, label:'10.00 µF'},
-        {max:100.0, res:0.1, pct:1.9, counts:2, label:'100.0 µF'},
-        {max:1000, res:1, pct:1.9, counts:2, label:'9999 µF (100–1000 µF)'},
-        {max:9999, res:1, pct:5, counts:20, label:'9999 µF (>1000 µF)'}
-      ]},
-    LOZ_CAP: { nombre:'Capacímetro Lo-Z (power-up option)', unidad:'µF', acCaveat:false, tipico:true,
-      rangos:[
-        {max:1, res:0.001, pct:10, counts:2, label:'1000 nF'},
-        {max:10.00, res:0.01, pct:10, counts:2, label:'10.00 µF'},
-        {max:100.0, res:0.1, pct:10, counts:2, label:'100.0 µF'},
-        {max:500, res:1, pct:10, counts:2, label:'500 µF'}
-      ]},
-    AC_A: { nombre:'Amperímetro AC True-rms', unidad:'A', acCaveat:true,
-      rangos:[
-        {max:6.000, res:0.001, pct:1.5, counts:3, label:'6.000 A'},
-        {max:10.00, res:0.01, pct:1.5, counts:3, label:'10.00 A'}
-      ]},
-    DC_A: { nombre:'Amperímetro DC', unidad:'A', acCaveat:false,
-      rangos:[
-        {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 A'},
-        {max:10.00, res:0.01, pct:1.0, counts:3, label:'10.00 A'}
-      ]},
-    HZ: { nombre:'Frecuencímetro', unidad:'Hz', acCaveat:false,
-      rangos:[
-        {max:99.99, res:0.01, pct:0.1, counts:2, label:'99.99 Hz'},
-        {max:999.9, res:0.1, pct:0.1, counts:2, label:'999.9 Hz'},
-        {max:9999, res:1, pct:0.1, counts:2, label:'9.999 kHz'},
-        {max:50000, res:10, pct:0.1, counts:2, label:'50.00 kHz'}
-      ]}
+  const FLUKE_MODELOS = {
+    F117: { nombre: 'Fluke 117', funciones: {
+      DC_V: { nombre:'Voltímetro DC', unidad:'V',
+        rangos:[
+          {max:0.6, res:0.0001, pct:0.5, counts:2, label:'600.0 mV'},
+          {max:6.000, res:0.001, pct:0.5, counts:2, label:'6.000 V'},
+          {max:60.00, res:0.01, pct:0.5, counts:2, label:'60.00 V'},
+          {max:600.0, res:0.1, pct:0.5, counts:2, label:'600.0 V'}
+        ]},
+      AC_V: { nombre:'Voltímetro AC True-rms', unidad:'V', acCaveatPct:0.01,
+        rangos:[
+          {max:0.6, res:0.0001, label:'600.0 mV'},
+          {max:6.000, res:0.001, label:'6.000 V'},
+          {max:60.00, res:0.01, label:'60.00 V'},
+          {max:600.0, res:0.1, label:'600.0 V'}
+        ],
+        bandas:[
+          {key:'b1', label:'45 Hz a 500 Hz', pct:1.0, counts:3},
+          {key:'b2', label:'500 Hz a 1 kHz', pct:2.0, counts:3}
+        ]},
+      LOZ_V: { nombre:'Auto-V LoZ True-rms', unidad:'V',
+        rangos:[{max:600.0, res:0.1, label:'600.0 V'}],
+        bandas:[
+          {key:'b1', label:'DC o 45 Hz a 500 Hz', pct:2.0, counts:3},
+          {key:'b2', label:'500 Hz a 1 kHz', pct:4.0, counts:3}
+        ]},
+      OHM: { nombre:'Óhmetro', unidad:'Ω',
+        rangos:[
+          {max:600.0, res:0.1, pct:0.9, counts:2, label:'600.0 Ω'},
+          {max:6000, res:1, pct:0.9, counts:1, label:'6.000 kΩ'},
+          {max:60000, res:10, pct:0.9, counts:1, label:'60.00 kΩ'},
+          {max:600000, res:100, pct:0.9, counts:1, label:'600.0 kΩ'},
+          {max:6000000, res:1000, pct:0.9, counts:1, label:'6.000 MΩ'},
+          {max:40000000, res:10000, pct:5, counts:2, label:'40.00 MΩ'}
+        ]},
+      DIODE: { nombre:'Prueba de diodo', unidad:'V',
+        rangos:[{max:2.000, res:0.001, pct:0.9, counts:2, label:'2.000 V'}]},
+      CAP: { nombre:'Capacímetro', unidad:'µF',
+        rangos:[
+          {max:1, res:0.001, pct:1.9, counts:2, label:'1000 nF'},
+          {max:10.00, res:0.01, pct:1.9, counts:2, label:'10.00 µF'},
+          {max:100.0, res:0.1, pct:1.9, counts:2, label:'100.0 µF'},
+          {max:1000, res:1, pct:1.9, counts:2, label:'9999 µF (100–1000 µF)'},
+          {max:9999, res:1, pct:5, counts:20, label:'9999 µF (>1000 µF)'}
+        ]},
+      LOZ_CAP: { nombre:'Capacímetro Lo-Z (power-up option)', unidad:'µF', tipico:true,
+        rangos:[
+          {max:1, res:0.001, pct:10, counts:2, label:'1000 nF'},
+          {max:10.00, res:0.01, pct:10, counts:2, label:'10.00 µF'},
+          {max:100.0, res:0.1, pct:10, counts:2, label:'100.0 µF'},
+          {max:500, res:1, pct:10, counts:2, label:'500 µF'}
+        ]},
+      AC_A: { nombre:'Amperímetro AC True-rms', unidad:'A', acCaveatPct:0.01,
+        rangos:[
+          {max:6.000, res:0.001, pct:1.5, counts:3, label:'6.000 A'},
+          {max:10.00, res:0.01, pct:1.5, counts:3, label:'10.00 A'}
+        ]},
+      DC_A: { nombre:'Amperímetro DC', unidad:'A',
+        rangos:[
+          {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 A'},
+          {max:10.00, res:0.01, pct:1.0, counts:3, label:'10.00 A'}
+        ]},
+      HZ: { nombre:'Frecuencímetro', unidad:'Hz',
+        rangos:[
+          {max:99.99, res:0.01, pct:0.1, counts:2, label:'99.99 Hz'},
+          {max:999.9, res:0.1, pct:0.1, counts:2, label:'999.9 Hz'},
+          {max:9999, res:1, pct:0.1, counts:2, label:'9.999 kHz'},
+          {max:50000, res:10, pct:0.1, counts:2, label:'50.00 kHz'}
+        ]}
+    }},
+    F111: { nombre: 'Fluke 111', funciones: {
+      DC_V: { nombre:'Voltímetro DC', unidad:'V',
+        rangos:[
+          {max:6.000, res:0.001, pct:0.7, counts:2, label:'6.000 V'},
+          {max:60.00, res:0.01, pct:0.7, counts:2, label:'60.00 V'},
+          {max:600.0, res:0.1, pct:0.7, counts:2, label:'600.0 V'}
+        ]},
+      AC_V: { nombre:'Voltímetro AC True-rms', unidad:'V', acCaveatPct:0.05,
+        rangos:[
+          {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 V'},
+          {max:60.00, res:0.01, pct:1.0, counts:3, label:'60.00 V'},
+          {max:600.0, res:0.1, pct:1.0, counts:3, label:'600.0 V'}
+        ]},
+      OHM: { nombre:'Óhmetro', unidad:'Ω',
+        rangos:[
+          {max:600.0, res:0.1, pct:0.9, counts:2, label:'600.0 Ω'},
+          {max:6000, res:1, pct:0.9, counts:1, label:'6.000 kΩ'},
+          {max:60000, res:10, pct:0.9, counts:1, label:'60.00 kΩ'},
+          {max:600000, res:100, pct:0.9, counts:1, label:'600.0 kΩ'},
+          {max:6000000, res:1000, pct:0.9, counts:1, label:'6.000 MΩ'},
+          {max:40000000, res:10000, pct:1.5, counts:3, label:'40.00 MΩ'}
+        ]},
+      DIODE: { nombre:'Prueba de diodo', unidad:'V',
+        rangos:[{max:2.200, res:0.001, pct:0.9, counts:2, label:'2.200 V'}]},
+      CAP: { nombre:'Capacímetro', unidad:'µF',
+        rangos:[
+          {max:1, res:0.001, pct:1.9, counts:2, label:'1000 nF'},
+          {max:10.00, res:0.01, pct:1.9, counts:2, label:'10.00 µF'},
+          {max:100.0, res:0.1, pct:1.9, counts:2, label:'100.0 µF'},
+          {max:1000, res:1, pct:1.9, counts:2, label:'10000 µF (100–1000 µF)'},
+          {max:10000, res:1, pct:10, counts:90, label:'10000 µF (>1000 µF, típico)'}
+        ]},
+      AC_A: { nombre:'Amperímetro AC True-rms', unidad:'A', acCaveatAbsoluto:3,
+        rangos:[{max:10.00, res:0.01, pct:1.5, counts:3, label:'10.00 A'}]},
+      DC_A: { nombre:'Amperímetro DC', unidad:'A',
+        rangos:[
+          {max:6.000, res:0.001, pct:1.0, counts:3, label:'6.000 A'},
+          {max:10.00, res:0.01, pct:1.0, counts:3, label:'10.00 A'}
+        ]},
+      HZ: { nombre:'Frecuencímetro', unidad:'Hz',
+        rangos:[
+          {max:99.99, res:0.01, pct:0.1, counts:2, label:'99.99 Hz'},
+          {max:999.9, res:0.1, pct:0.1, counts:2, label:'999.9 Hz'},
+          {max:9999, res:1, pct:0.1, counts:2, label:'9.999 kHz'},
+          {max:50000, res:10, pct:0.1, counts:2, label:'50.00 kHz'}
+        ]}
+    }}
   };
 
   // Unidades seleccionables por función, con el factor que convierte el
@@ -835,9 +879,9 @@
   // Busca el rango que corresponde a "valor" (ya en la unidad base) y
   // devuelve el error instrumental CRUDO (sin redondear) según la fórmula
   // ± (% de lectura + cuentas), junto con los datos de trazabilidad
-  // (rango detectado, resolución, fórmula, aviso de <1% del rango).
-  function calcularPInstrumentalCrudo(funcKey, valor, bandaKey){
-    const cfg = FLUKE_FUNCIONES[funcKey];
+  // (rango detectado, resolución, fórmula, aviso de rango mínimo).
+  function calcularPInstrumentalCrudo(modeloKey, funcKey, valor, bandaKey){
+    const cfg = FLUKE_MODELOS[modeloKey].funciones[funcKey];
     const absVal = Math.abs(valor);
     const eps = 1e-9;
     let rango = null;
@@ -846,7 +890,7 @@
     }
     if (!rango){
       const maxLabel = cfg.rangos[cfg.rangos.length - 1].label;
-      return { error: `La media de la serie supera el rango máximo especificado para ${cfg.nombre} (${maxLabel}).` };
+      return { error: `La media de la serie supera el rango máximo especificado para ${cfg.nombre} en ${FLUKE_MODELOS[modeloKey].nombre} (${maxLabel}).` };
     }
     let pct, counts;
     if (cfg.bandas){
@@ -858,8 +902,10 @@
     }
     const pCrudo = (pct / 100) * absVal + counts * rango.res;
     let caveat = null;
-    if (cfg.acCaveat && absVal < 0.01 * rango.max - eps){
-      caveat = 'La media está por debajo del 1 % del rango: el fabricante no garantiza la exactitud en esta zona (nota [1] de la Tabla 1).';
+    if (cfg.acCaveatPct && absVal < cfg.acCaveatPct * rango.max - eps){
+      caveat = `La media está por debajo del ${(cfg.acCaveatPct * 100).toFixed(0)} % del rango: el fabricante no garantiza la exactitud en esta zona.`;
+    } else if (cfg.acCaveatAbsoluto && absVal < cfg.acCaveatAbsoluto - eps){
+      caveat = `La media está por debajo de ${cfg.acCaveatAbsoluto} ${cfg.unidad}: el fabricante no especifica la exactitud en esta zona.`;
     }
     return { pCrudo, rangoLabel: rango.label, resolucion: rango.res, pct, counts, caveat, tipico: !!cfg.tipico };
   }
@@ -914,14 +960,23 @@
   const selModoP = document.getElementById('modo-p');
   const bloqueManual = document.getElementById('bloque-manual');
   const bloqueFluke = document.getElementById('bloque-fluke');
+  const selFlukeModelo = document.getElementById('fluke-modelo');
   const selFlukeFuncion = document.getElementById('fluke-funcion');
   const campoFlukeBanda = document.getElementById('fluke-campo-banda');
   const selFlukeBanda = document.getElementById('fluke-banda');
   const selFlukeUnidad = document.getElementById('fluke-unidad');
   const flukeInfoRango = document.getElementById('fluke-info-rango');
 
+  function actualizarFuncionesFluke(){
+    const funciones = FLUKE_MODELOS[selFlukeModelo.value].funciones;
+    const valorPrevio = selFlukeFuncion.value;
+    selFlukeFuncion.innerHTML = Object.keys(funciones)
+      .map(key => `<option value="${key}">${funciones[key].nombre}</option>`).join('');
+    if (valorPrevio && funciones[valorPrevio]) selFlukeFuncion.value = valorPrevio;
+    actualizarBloqueFluke();
+  }
   function actualizarBloqueFluke(){
-    const cfg = FLUKE_FUNCIONES[selFlukeFuncion.value];
+    const cfg = FLUKE_MODELOS[selFlukeModelo.value].funciones[selFlukeFuncion.value];
     if (cfg.bandas){
       campoFlukeBanda.classList.remove('oculto');
       selFlukeBanda.innerHTML = cfg.bandas.map(b => `<option value="${b.key}">${b.label}</option>`).join('');
@@ -935,8 +990,9 @@
     selFlukeUnidad.value = base.label;
     flukeInfoRango.classList.add('oculto');
   }
+  selFlukeModelo.addEventListener('change', actualizarFuncionesFluke);
   selFlukeFuncion.addEventListener('change', actualizarBloqueFluke);
-  actualizarBloqueFluke();
+  actualizarFuncionesFluke();
 
   selModoP.addEventListener('change', () => {
     modoP = selModoP.value;
@@ -1076,14 +1132,15 @@
     let datosParaCalculo = mediciones;
 
     if (modoP === 'fluke'){
+      const modeloKey = selFlukeModelo.value;
       const funcKey = selFlukeFuncion.value;
-      const cfg = FLUKE_FUNCIONES[funcKey];
+      const cfg = FLUKE_MODELOS[modeloKey].funciones[funcKey];
       const unidades = FLUKE_UNIDADES[cfg.unidad];
       const unidadSel = unidades.find(u => u.label === selFlukeUnidad.value) || unidades[0];
       datosParaCalculo = mediciones.map(v => v * unidadSel.factor);
       const mediaPrevia = datosParaCalculo.reduce((a, b) => a + b, 0) / datosParaCalculo.length;
       const bandaKey = cfg.bandas ? selFlukeBanda.value : null;
-      const r = calcularPInstrumentalCrudo(funcKey, mediaPrevia, bandaKey);
+      const r = calcularPInstrumentalCrudo(modeloKey, funcKey, mediaPrevia, bandaKey);
 
       if (r.error){
         msgPrecision.textContent = r.error;
@@ -1098,7 +1155,7 @@
         ? `± (${cfg.bandas.find(b => b.key === bandaKey).pct} % + ${cfg.bandas.find(b => b.key === bandaKey).counts} cuentas)`
         : `± (${r.pct} % + ${r.counts} cuentas)`;
       flukeInfoRango.innerHTML =
-        `Rango detectado (según x̄ = ${mediaPrevia.toFixed(4)} ${cfg.unidad}): <strong>${r.rangoLabel}</strong> · resolución ${r.resolucion} ${cfg.unidad}<br>` +
+        `${FLUKE_MODELOS[modeloKey].nombre} · Rango detectado (según x̄ = ${mediaPrevia.toFixed(4)} ${cfg.unidad}): <strong>${r.rangoLabel}</strong> · resolución ${r.resolucion} ${cfg.unidad}<br>` +
         `Fórmula aplicada: ${formulaTexto}${r.tipico ? ' (valor típico)' : ''} · P crudo = ${r.pCrudo.toFixed(6)} → redondeado a 1 cifra: ${precision}`;
       flukeInfoRango.classList.remove('oculto');
 
