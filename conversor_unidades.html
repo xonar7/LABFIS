@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversor de Unidades</title>
+<style>
+  :root{
+    --paper:#14181A;
+    --paper-grid: rgba(255,255,255,0.035);
+    --card:#1B211D;
+    --card-border:#2C352F;
+    --surface-2:#12160F;
+    --ink:#E9ECE4;
+    --ink-soft:#9BA89C;
+    --ink-faint:#66716A;
+    --accent:#5FCB93;
+    --accent-dark:#3F9E6F;
+    --accent-soft:rgba(95,203,147,0.15);
+    --danger:#E2695A;
+    --danger-soft:rgba(226,105,90,0.14);
+    --readout-bg:#0D1712;
+    --readout-fg:#8FE3B0;
+    --readout-fg-soft:#CFEFDC;
+    --readout-border:#23392C;
+    --font-mono:'JetBrains Mono', ui-monospace, monospace;
+    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    padding:2.5rem 1.25rem 4rem;
+    background:
+      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.5;
+    display:flex;
+    justify-content:center;
+  }
+  .instrumento{ width:100%; max-width:720px; }
+  header.masthead{
+    margin-bottom:1.5rem;
+    padding-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 0.5rem;
+  }
+  h1{ font-size:24px; font-weight:600; margin:0 0 0.4rem; letter-spacing:-0.01em; }
+  .masthead p{ margin:0; color:var(--ink-soft); font-size:14px; max-width:56ch; }
+
+  .tabs{
+    display:flex;
+    gap:0.5rem;
+    margin-bottom:1.25rem;
+    border-bottom:1px solid var(--card-border);
+  }
+  .tab-btn{
+    font-family:var(--font-sans);
+    font-size:14px;
+    font-weight:600;
+    background:none;
+    border:none;
+    border-bottom:2px solid transparent;
+    color:var(--ink-soft);
+    padding:0.6rem 0.2rem;
+    cursor:pointer;
+    margin-right:1.2rem;
+  }
+  .tab-btn.activo{ color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-panel.oculto{ display:none !important; }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:6px;
+    padding:1.25rem 1.4rem;
+    margin-bottom:1rem;
+  }
+  .panel-head{ display:flex; align-items:baseline; gap:0.6rem; margin-bottom:0.9rem; }
+  .paso-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border-radius:3px;
+    padding:2px 7px;
+    letter-spacing:0.04em;
+  }
+  .panel-head h2{ font-size:15px; font-weight:600; margin:0; }
+  label.campo-label{ display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:0.35rem; }
+  .campo{ margin-bottom:0.9rem; }
+  .campo:last-child{ margin-bottom:0; }
+  .fila-valor-e{ display:flex; gap:0.5rem; }
+  .fila-valor-e input{ flex:1; }
+  .fila-valor-e select{ flex:0 0 auto; width:auto; min-width:9rem; }
+
+  input[type="text"], select{
+    width:100%;
+    font-family:var(--font-mono);
+    font-size:15px;
+    padding:0.55rem 0.7rem;
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    background:var(--surface-2);
+    color:var(--ink);
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  button{
+    font-family:var(--font-sans);
+    font-size:13.5px;
+    font-weight:500;
+    border-radius:4px;
+    border:1px solid var(--card-border);
+    background:var(--card);
+    color:var(--ink);
+    padding:0.55rem 0.9rem;
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  button:active{ transform:translateY(1px); }
+  button.primario{
+    background:var(--accent);
+    border-color:var(--accent-dark);
+    color:var(--surface-2);
+    font-weight:600;
+  }
+  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
+  .acciones{ display:flex; gap:0.6rem; margin-top:1.1rem; }
+  .mensaje{ font-size:12.5px; margin-top:0.6rem; padding:0.4rem 0.6rem; border-radius:4px; display:none; }
+  .mensaje.error{ display:block; background:var(--danger-soft); color:var(--danger); }
+  .oculto{ display:none !important; }
+
+  .readout{
+    background:var(--readout-bg);
+    border:1px solid var(--readout-border);
+    border-radius:6px;
+    padding:1rem 1.2rem;
+    margin-top:0.9rem;
+  }
+  .readout .r-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--readout-fg-soft);
+    margin-bottom:0.7rem;
+  }
+  table.tabla-resultado{ width:100%; border-collapse:collapse; }
+  table.tabla-resultado td{
+    padding:0.4rem 0.2rem;
+    font-family:var(--font-mono);
+    font-size:14.5px;
+    border-bottom:1px solid var(--readout-border);
+  }
+  table.tabla-resultado tr:last-child td{ border-bottom:none; }
+  table.tabla-resultado td.unidad{ color:var(--readout-fg-soft); }
+  table.tabla-resultado td.valor{ color:var(--readout-fg); font-weight:600; text-align:right; }
+  table.tabla-resultado tr.fila-origen td{ color:var(--ink-faint); }
+  table.tabla-resultado tr.fila-origen td.valor{ color:var(--ink-faint); font-weight:400; }
+
+  /* --- Tabla SI --- */
+  .tabla-wrap{ overflow-x:auto; }
+  table.tabla-si{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  table.tabla-si th, table.tabla-si td{
+    padding:0.45rem 0.65rem;
+    text-align:left;
+    border-bottom:1px solid var(--card-border);
+    white-space:nowrap;
+  }
+  table.tabla-si thead th{
+    color:var(--ink-soft);
+    font-size:11.5px;
+    letter-spacing:0.04em;
+    font-weight:600;
+    border-bottom:1px solid var(--card-border);
+  }
+  table.tabla-si tbody tr:hover{ background:var(--surface-2); }
+  table.tabla-si td.simbolo{ font-family:var(--font-mono); color:var(--accent); }
+  table.tabla-si tr.fila-grupo td{
+    background:var(--surface-2);
+    color:var(--ink-soft);
+    font-weight:600;
+    font-size:11.5px;
+    letter-spacing:0.04em;
+  }
+  table.tabla-si tr.oculto-filtro{ display:none; }
+
+  footer.pie{ margin-top:1.5rem; font-size:11.5px; color:var(--ink-faint); text-align:center; }
+</style>
+</head>
+<body>
+<div class="instrumento">
+  <header class="masthead">
+    <p class="eyebrow">Instrumento de conversión y consulta</p>
+    <h1>Conversor de Unidades</h1>
+    <p>Convertí entre Sistema Inglés y SI (y dentro del SI) para longitud, masa,
+    volumen, temperatura y tiempo, o consultá la tabla de unidades del Sistema
+    Internacional.</p>
+  </header>
+
+  <div class="tabs">
+    <button type="button" class="tab-btn activo" data-tab="conversor">Conversor</button>
+    <button type="button" class="tab-btn" data-tab="tabla-si">Tabla del SI</button>
+  </div>
+
+  <!-- ============ PESTAÑA: CONVERSOR ============ -->
+  <div class="tab-panel" id="tab-conversor">
+    <section class="panel">
+      <div class="panel-head">
+        <span class="paso-badge">DATOS</span>
+        <h2>Magnitud, valor y unidad</h2>
+      </div>
+      <div class="campo">
+        <label class="campo-label" for="magnitud">Magnitud</label>
+        <select id="magnitud">
+          <option value="longitud">Longitud</option>
+          <option value="area">Área</option>
+          <option value="masa">Masa</option>
+          <option value="volumen">Volumen</option>
+          <option value="temperatura">Temperatura</option>
+          <option value="tiempo">Tiempo</option>
+          <option value="velocidad">Velocidad</option>
+          <option value="presion">Presión</option>
+          <option value="energia">Energía</option>
+          <option value="potencia">Potencia</option>
+          <option value="fuerza">Fuerza</option>
+          <option value="frecuencia">Frecuencia</option>
+          <option value="datos">Datos digitales</option>
+          <option value="angulo">Ángulo</option>
+          <option value="densidad">Densidad</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label class="campo-label" for="valor">Valor</label>
+        <div class="fila-valor-e">
+          <input type="text" id="valor" inputmode="decimal" enterkeyhint="done" placeholder="ej. 5" />
+          <select id="unidad-origen"></select>
+        </div>
+      </div>
+      <div class="mensaje error" id="msg-error"></div>
+      <div class="acciones">
+        <button class="primario" id="btn-convertir">Convertir</button>
+        <button type="button" id="btn-reiniciar">Reiniciar</button>
+      </div>
+    </section>
+
+    <section class="readout oculto" id="panel-resultado">
+      <div class="r-label">Equivalencias</div>
+      <table class="tabla-resultado" id="tabla-resultado"></table>
+    </section>
+  </div>
+
+  <!-- ============ PESTAÑA: TABLA SI ============ -->
+  <div class="tab-panel oculto" id="tab-tabla-si">
+    <section class="panel">
+      <div class="panel-head">
+        <span class="paso-badge">CONSULTA</span>
+        <h2>Unidades del Sistema Internacional</h2>
+      </div>
+      <div class="campo">
+        <label class="campo-label" for="buscador-si">Buscar (nombre, símbolo o magnitud)</label>
+        <input type="text" id="buscador-si" placeholder="ej. presión, N, faradio..." />
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Unidades básicas o fundamentales</h2>
+      </div>
+      <div class="tabla-wrap">
+        <table class="tabla-si" id="tabla-si-basicas">
+          <thead>
+            <tr><th>Unidad</th><th>Símbolo</th><th>Magnitud</th><th>Dimensión</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Unidades derivadas</h2>
+      </div>
+      <div class="tabla-wrap">
+        <table class="tabla-si" id="tabla-si-derivadas">
+          <thead>
+            <tr><th>Nombre</th><th>Símbolo</th><th>En otras unidades</th><th>En unidades básicas</th><th>Magnitud</th><th>Referencia</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <footer class="pie">Conversor de Unidades · Sistema Inglés / SI · UMSS</footer>
+</div>
+<script>
+(function(){
+  // ---------- Pestañas ----------
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('activo'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('oculto'));
+      btn.classList.add('activo');
+      document.getElementById('tab-' + btn.dataset.tab).classList.remove('oculto');
+    });
+  });
+
+  // ---------- Datos de conversión ----------
+  // Los factores de Sistema Inglés → SI (in, ft, yd, mi, lb, oz, gal) son los
+  // que da la hoja de equivalencias del curso (redondeados a la precisión que
+  // ahí se muestra); las unidades internas del SI (mm/cm/m/km, mg/g/kg, ml/l,
+  // s/min/h/día) usan los factores exactos de potencias de 10 o de tiempo.
+  const MAGNITUDES = {
+    longitud: { nombre:'Longitud', unidades: {
+      mm:{label:'Milímetro (mm)', factor:0.001},
+      cm:{label:'Centímetro (cm)', factor:0.01},
+      m:{label:'Metro (m)', factor:1, base:true},
+      km:{label:'Kilómetro (km)', factor:1000},
+      in:{label:'Pulgada (in)', factor:0.0254},
+      ft:{label:'Pie (ft)', factor:0.3048},
+      yd:{label:'Yarda (yd)', factor:0.914},
+      mi:{label:'Milla (mi)', factor:1609}
+    }},
+    area: { nombre:'Área', unidades: {
+      mm2:{label:'Milímetro cuadrado (mm²)', factor:0.000001},
+      cm2:{label:'Centímetro cuadrado (cm²)', factor:0.0001},
+      m2:{label:'Metro cuadrado (m²)', factor:1, base:true},
+      km2:{label:'Kilómetro cuadrado (km²)', factor:1000000},
+      ha:{label:'Hectárea (ha)', factor:10000},
+      in2:{label:'Pulgada cuadrada (in²)', factor:0.00064516},
+      ft2:{label:'Pie cuadrado (ft²)', factor:0.09290304}
+    }},
+    masa: { nombre:'Masa', unidades: {
+      mg:{label:'Miligramo (mg)', factor:0.001},
+      g:{label:'Gramo (g)', factor:1, base:true},
+      kg:{label:'Kilogramo (kg)', factor:1000},
+      lb:{label:'Libra (lb)', factor:453.6},
+      oz:{label:'Onza (oz)', factor:28.35}
+    }},
+    volumen: { nombre:'Volumen', unidades: {
+      mm3:{label:'Milímetro cúbico (mm³)', factor:0.000001},
+      cm3:{label:'Centímetro cúbico (cm³)', factor:0.001},
+      ml:{label:'Mililitro (ml)', factor:0.001},
+      l:{label:'Litro (l)', factor:1, base:true},
+      m3:{label:'Metro cúbico (m³)', factor:1000},
+      gal:{label:'Galón (gal)', factor:3.785}
+    }},
+    tiempo: { nombre:'Tiempo', unidades: {
+      s:{label:'Segundo (s)', factor:1, base:true},
+      min:{label:'Minuto (min)', factor:60},
+      h:{label:'Hora (h)', factor:3600},
+      dia:{label:'Día (d)', factor:86400}
+    }},
+    velocidad: { nombre:'Velocidad', unidades: {
+      ms:{label:'Metro/segundo (m/s)', factor:1, base:true},
+      kmh:{label:'Kilómetro/hora (km/h)', factor:1000/3600},
+      mph:{label:'Milla/hora (mph)', factor:1609/3600},
+      fts:{label:'Pie/segundo (ft/s)', factor:0.3048}
+    }},
+    presion: { nombre:'Presión', unidades: {
+      Pa:{label:'Pascal (Pa)', factor:1, base:true},
+      kPa:{label:'Kilopascal (kPa)', factor:1000},
+      atm:{label:'Atmósfera (atm)', factor:101325},
+      bar:{label:'Bar (bar)', factor:100000},
+      psi:{label:'Libra/pulgada² (psi)', factor:6894.76},
+      mmHg:{label:'Milímetro de mercurio (mmHg)', factor:133.322}
+    }},
+    energia: { nombre:'Energía', unidades: {
+      J:{label:'Joule (J)', factor:1, base:true},
+      cal:{label:'Caloría (cal)', factor:4.184},
+      kWh:{label:'Kilovatio-hora (kWh)', factor:3600000},
+      BTU:{label:'BTU', factor:1055.06},
+      eV:{label:'Electronvoltio (eV)', factor:1.602176634e-19}
+    }},
+    potencia: { nombre:'Potencia', unidades: {
+      W:{label:'Vatio (W)', factor:1, base:true},
+      kW:{label:'Kilovatio (kW)', factor:1000},
+      hp:{label:'Caballo de fuerza (hp)', factor:745.7},
+      BTUh:{label:'BTU/hora (BTU/h)', factor:0.293071}
+    }},
+    fuerza: { nombre:'Fuerza', unidades: {
+      N:{label:'Newton (N)', factor:1, base:true},
+      kgf:{label:'Kilogramo-fuerza (kgf)', factor:9.80665},
+      lbf:{label:'Libra-fuerza (lbf)', factor:4.44822},
+      dyn:{label:'Dina (dyn)', factor:0.00001}
+    }},
+    frecuencia: { nombre:'Frecuencia', unidades: {
+      Hz:{label:'Hercio (Hz)', factor:1, base:true},
+      kHz:{label:'Kilohercio (kHz)', factor:1000},
+      MHz:{label:'Megahercio (MHz)', factor:1000000},
+      GHz:{label:'Gigahercio (GHz)', factor:1000000000}
+    }},
+    datos: { nombre:'Datos digitales', unidades: {
+      bit:{label:'Bit (bit)', factor:0.125},
+      byte:{label:'Byte (B)', factor:1, base:true},
+      kbit:{label:'Kilobit (kbit)', factor:125},
+      KB:{label:'Kilobyte decimal (KB = 1000 B)', factor:1000},
+      KiB:{label:'Kibibyte binario (KiB = 1024 B)', factor:1024},
+      Mbit:{label:'Megabit (Mbit)', factor:125000},
+      MB:{label:'Megabyte decimal (MB = 1000² B)', factor:1000000},
+      MiB:{label:'Mebibyte binario (MiB = 1024² B)', factor:1048576},
+      Gbit:{label:'Gigabit (Gbit)', factor:125000000},
+      GB:{label:'Gigabyte decimal (GB = 1000³ B)', factor:1000000000},
+      GiB:{label:'Gibibyte binario (GiB = 1024³ B)', factor:1073741824}
+    }},
+    angulo: { nombre:'Ángulo', unidades: {
+      rad:{label:'Radián (rad)', factor:1, base:true},
+      deg:{label:'Grado (°)', factor:Math.PI/180},
+      gon:{label:'Gradián (gon)', factor:Math.PI/200}
+    }},
+    densidad: { nombre:'Densidad', unidades: {
+      kgm3:{label:'Kilogramo/metro³ (kg/m³)', factor:1, base:true},
+      gcm3:{label:'Gramo/centímetro³ (g/cm³)', factor:1000},
+      gml:{label:'Gramo/mililitro (g/ml)', factor:1000},
+      kgl:{label:'Kilogramo/litro (kg/l)', factor:1000}
+    }},
+  };
+  // La temperatura no es una conversión lineal por factor (tiene desplazamiento
+  // de origen), así que se maneja aparte con sus propias fórmulas.
+  const UNIDADES_TEMPERATURA = {
+    C:{label:'Celsius (°C)'}, F:{label:'Fahrenheit (°F)'}, K:{label:'Kelvin (K)'}
+  };
+  function convertirTemperatura(valor, desde, hasta){
+    let celsius;
+    if (desde === 'C') celsius = valor;
+    else if (desde === 'F') celsius = (valor - 32) * 5 / 9;
+    else celsius = valor - 273.15;
+    if (hasta === 'C') return celsius;
+    if (hasta === 'F') return celsius * 9 / 5 + 32;
+    return celsius + 273.15;
+  }
+
+  function formatoNum(n){
+    if (n === 0) return '0';
+    const abs = Math.abs(n);
+    if (abs >= 1e6 || abs < 1e-6) return n.toExponential(4);
+    return parseFloat(n.toPrecision(6)).toString();
+  }
+
+  // ---------- UI del conversor ----------
+  const selMagnitud = document.getElementById('magnitud');
+  const selUnidadOrigen = document.getElementById('unidad-origen');
+  const inputValor = document.getElementById('valor');
+  const msgError = document.getElementById('msg-error');
+  const btnConvertir = document.getElementById('btn-convertir');
+  const btnReiniciar = document.getElementById('btn-reiniciar');
+  const panelResultado = document.getElementById('panel-resultado');
+  const tablaResultado = document.getElementById('tabla-resultado');
+
+  function actualizarUnidades(){
+    const magKey = selMagnitud.value;
+    if (magKey === 'temperatura'){
+      selUnidadOrigen.innerHTML = Object.keys(UNIDADES_TEMPERATURA)
+        .map(key => `<option value="${key}">${UNIDADES_TEMPERATURA[key].label}</option>`).join('');
+    } else {
+      const unidades = MAGNITUDES[magKey].unidades;
+      selUnidadOrigen.innerHTML = Object.keys(unidades)
+        .map(key => `<option value="${key}">${unidades[key].label}</option>`).join('');
+      const baseKey = Object.keys(unidades).find(k => unidades[k].base);
+      if (baseKey) selUnidadOrigen.value = baseKey;
+    }
+    panelResultado.classList.add('oculto');
+  }
+  selMagnitud.addEventListener('change', actualizarUnidades);
+  actualizarUnidades();
+
+  function convertir(){
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+    const valorRaw = inputValor.value.trim().replace(',', '.');
+    const valor = Number(valorRaw);
+    if (valorRaw === '' || Number.isNaN(valor)){
+      msgError.textContent = 'Ingrese un valor numérico válido.';
+      msgError.classList.add('error');
+      panelResultado.classList.add('oculto');
+      return;
+    }
+
+    const magKey = selMagnitud.value;
+    const unidadOrigen = selUnidadOrigen.value;
+    let filas = '';
+
+    if (magKey === 'temperatura'){
+      Object.keys(UNIDADES_TEMPERATURA).forEach(key => {
+        const esOrigen = key === unidadOrigen;
+        const resultado = convertirTemperatura(valor, unidadOrigen, key);
+        filas += `<tr class="${esOrigen ? 'fila-origen' : ''}">
+          <td class="unidad">${UNIDADES_TEMPERATURA[key].label}</td>
+          <td class="valor">${formatoNum(resultado)}</td>
+        </tr>`;
+      });
+    } else {
+      const unidades = MAGNITUDES[magKey].unidades;
+      const valorBase = valor * unidades[unidadOrigen].factor;
+      Object.keys(unidades).forEach(key => {
+        const esOrigen = key === unidadOrigen;
+        const resultado = valorBase / unidades[key].factor;
+        filas += `<tr class="${esOrigen ? 'fila-origen' : ''}">
+          <td class="unidad">${unidades[key].label}</td>
+          <td class="valor">${formatoNum(resultado)}</td>
+        </tr>`;
+      });
+    }
+
+    tablaResultado.innerHTML = filas;
+    panelResultado.classList.remove('oculto');
+  }
+  btnConvertir.addEventListener('click', convertir);
+  inputValor.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){ e.preventDefault(); convertir(); }
+  });
+  btnReiniciar.addEventListener('click', () => {
+    inputValor.value = '';
+    msgError.classList.remove('error');
+    msgError.textContent = '';
+    panelResultado.classList.add('oculto');
+    inputValor.focus();
+  });
+
+  // ---------- Tabla SI (referencia, con buscador) ----------
+  const UNIDADES_BASICAS = [
+    ['metro','m','longitud','L'],
+    ['kilogramo','kg','masa','M'],
+    ['segundo','s','tiempo','T'],
+    ['kelvin','K','temperatura','Θ'],
+    ['amperio','A','intensidad de corriente eléctrica','I'],
+    ['candela','cd','intensidad luminosa','J'],
+    ['mol','mol','cantidad de sustancia','N']
+  ];
+  const tbodyBasicas = document.querySelector('#tabla-si-basicas tbody');
+  tbodyBasicas.innerHTML = UNIDADES_BASICAS.map(([u,s,m,d]) =>
+    `<tr><td>${u}</td><td class="simbolo">${s}</td><td>${m}</td><td>${d}</td></tr>`
+  ).join('');
+
+  // [nombre, símbolo, expresada en otras unidades, expresada en unidades básicas, magnitud, referencia]
+  const UNIDADES_DERIVADAS = {
+    'Unidades de geometría, mecánica y tiempo': [
+      ['radián','rad','1','m/m','ángulo plano','—'],
+      ['estereorradián','sr','1','m²/m²','ángulo sólido','—'],
+      ['hercio','Hz','—','s⁻¹','frecuencia','Heinrich Rudolf Hertz'],
+      ['newton','N','—','m·kg·s⁻²','fuerza','Isaac Newton'],
+      ['pascal','Pa','N/m²','m⁻¹·kg·s⁻²','presión','Blaise Pascal'],
+      ['joule','J','N·m','m²·kg·s⁻²','energía (incluyendo calor)','James Prescott Joule'],
+      ['vatio','W','J/s','m²·kg·s⁻³','potencia y flujo radiante','James Watt']
+    ],
+    'Unidades electromagnéticas': [
+      ['coulomb','C','—','A·s','carga eléctrica','Charles-Augustin de Coulomb'],
+      ['voltio','V','W/A','m²·kg·s⁻³·A⁻¹','tensión eléctrica y diferencia de potencial eléctrico','Alessandro Volta'],
+      ['faradio','F','C/V','m⁻²·kg⁻¹·s⁴·A²','capacitancia','Michael Faraday'],
+      ['ohmio','Ω','V/A','m²·kg·s⁻³·A⁻²','resistencia eléctrica','Georg Simon Ohm'],
+      ['siemens','S','A/V','m⁻²·kg⁻¹·s³·A²','conductancia eléctrica','Werner von Siemens'],
+      ['weber','Wb','V·s','m²·kg·s⁻²·A⁻¹','flujo magnético','Wilhelm Eduard Weber'],
+      ['tesla','T','Wb/m²','kg·s⁻²·A⁻¹','campo magnético','Nikola Tesla'],
+      ['henrio','H','Wb/A','m²·kg·s⁻²·A⁻²','inductancia','Joseph Henry']
+    ],
+    'Unidades de termodinámica y química': [
+      ['grado Celsius','°C','—','K','temperatura Celsius','Anders Celsius'],
+      ['katal','kat','—','s⁻¹·mol','actividad catalítica','—']
+    ],
+    'Unidades radiológicas': [
+      ['becquerel','Bq','—','s⁻¹','actividad de un radionucleido','Henri Becquerel'],
+      ['gray','Gy','J/kg','m²·s⁻²','dosis absorbida','Louis Harold Gray'],
+      ['sievert','Sv','J/kg','m²·s⁻²','dosis equivalente','Rolf Sievert']
+    ],
+    'Unidades de fotometría': [
+      ['lumen','lm','cd·sr','cd','flujo luminoso','—'],
+      ['lux','lx','lm/m²','m⁻²·cd','iluminancia','—']
+    ]
+  };
+  const tbodyDerivadas = document.querySelector('#tabla-si-derivadas tbody');
+  let filasDerivadasHtml = '';
+  Object.keys(UNIDADES_DERIVADAS).forEach(grupo => {
+    filasDerivadasHtml += `<tr class="fila-grupo"><td colspan="6">${grupo}</td></tr>`;
+    UNIDADES_DERIVADAS[grupo].forEach(([nombre, simbolo, otras, basicas, magnitud, ref]) => {
+      filasDerivadasHtml += `<tr>
+        <td>${nombre}</td><td class="simbolo">${simbolo}</td><td>${otras}</td>
+        <td>${basicas}</td><td>${magnitud}</td><td>${ref}</td>
+      </tr>`;
+    });
+  });
+  tbodyDerivadas.innerHTML = filasDerivadasHtml;
+
+  // Buscador: filtra filas de ambas tablas por coincidencia de texto en
+  // cualquier celda; las filas de encabezado de grupo siempre se muestran
+  // si al menos una fila del grupo sigue visible.
+  const buscadorSi = document.getElementById('buscador-si');
+  buscadorSi.addEventListener('input', () => {
+    const termino = buscadorSi.value.trim().toLowerCase();
+    document.querySelectorAll('#tabla-si-basicas tbody tr').forEach(fila => {
+      const texto = fila.textContent.toLowerCase();
+      fila.classList.toggle('oculto-filtro', termino !== '' && !texto.includes(termino));
+    });
+    let grupoActual = null, grupoVisible = false;
+    document.querySelectorAll('#tabla-si-derivadas tbody tr').forEach(fila => {
+      if (fila.classList.contains('fila-grupo')){
+        if (grupoActual) grupoActual.classList.toggle('oculto-filtro', !grupoVisible);
+        grupoActual = fila;
+        grupoVisible = false;
+        return;
+      }
+      const texto = fila.textContent.toLowerCase();
+      const coincide = termino === '' || texto.includes(termino);
+      fila.classList.toggle('oculto-filtro', !coincide);
+      if (coincide) grupoVisible = true;
+    });
+    if (grupoActual) grupoActual.classList.toggle('oculto-filtro', !grupoVisible);
+  });
+
+  inputValor.focus();
+})();
+</script>
+</body>
+</html>
