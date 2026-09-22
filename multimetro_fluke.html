@@ -227,8 +227,15 @@
     word-break:break-word;
   }
   .readout .r-valor.compacta{
-    font-size:32px;
+    font-size:26px;
   }
+  .readout .r-desglose{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--readout-fg-soft);
+    line-height:1.8;
+  }
+  .readout .r-desglose span{ color:var(--readout-fg); font-weight:600; }
   .readout .r-valor.rel{
     font-size:26px;
   }
@@ -256,7 +263,7 @@
   <header class="masthead">
     <p class="eyebrow">Instrumento de expresión de resultados</p>
     <h1>Multímetro Fluke — Error de medición</h1>
-    <p>Elegí el modelo y la función del multímetro, escribí la lectura única de
+    <p>Elige el modelo y la función del multímetro, escribe la lectura única de
     pantalla y la herramienta calcula el error absoluto y relativo según la
     tabla de exactitud del manual correspondiente.</p>
   </header>
@@ -292,7 +299,7 @@
     <p class="hint">
       El rango (y por lo tanto la resolución) se detecta automáticamente a partir de
       la magnitud de la lectura ya convertida a la unidad base, igual que el autorango
-      del multímetro. Elegí la unidad tal como aparece en la pantalla del Fluke (ej.
+      del multímetro. Elige la unidad tal como aparece en la pantalla del Fluke (ej.
       nF si el display muestra nanofaradios) — la conversión interna es automática.
       Fuente: Table 1, Accuracy Specifications — Fluke 114/115/117 Users Manual
       (modelo 117) y Fluke 110/111/112 Users Manual (modelo 111).
@@ -308,13 +315,12 @@
   <section class="readout oculto" id="panel-resultado">
     <div class="r-bloque">
       <div class="r-label">Resultado</div>
+      <!-- Una sola fila: (valor ± error absoluto) (unidad); error relativo % -->
       <div class="r-valor compacta" id="r-compacta">—</div>
     </div>
     <hr class="separador">
-    <div class="r-bloque">
-      <div class="r-label">Error relativo</div>
-      <div class="r-valor rel" id="r-relativo">—</div>
-    </div>
+    <!-- Desglose que indica qué es cada parte de la fila de arriba -->
+    <div class="r-desglose" id="r-desglose"></div>
     <div class="r-detalle" id="r-detalle"></div>
   </section>
   <footer class="pie">Multímetro Fluke (117 / 111) · Error absoluto y relativo (V ± E, %) · UMSS</footer>
@@ -389,11 +395,6 @@
   }
 
   // ---------- Tabla 1. Accuracy Specifications — Fluke 114/115/117 ----------
-  // Cada función tiene una lista de rangos ordenados ascendentemente por su
-  // valor máximo (en la unidad base indicada). El primer rango cuyo máximo
-  // sea >= |lectura| es el que se usa (autorango). Si la función tiene
-  // "bandas" (depende de la frecuencia de la señal, no de la magnitud),
-  // el %/cuentas viene de la banda elegida, no del rango.
   // Cada función tiene una lista de rangos ordenados ascendentemente por su
   // valor máximo (en la unidad base indicada). El primer rango cuyo máximo
   // sea >= |lectura| es el que se usa (autorango). Si la función tiene
@@ -541,19 +542,33 @@
     let pct, counts;
     if (cfg.bandas){
       const banda = cfg.bandas.find(b => b.key === bandaKey);
-      if (!banda) return { error: 'Seleccioná la banda de frecuencia.' };
+      if (!banda) return { error: 'Selecciona la banda de frecuencia.' };
       pct = banda.pct; counts = banda.counts;
     } else {
       pct = rango.pct; counts = rango.counts;
     }
+    // Error absoluto CRUDO: ± (% de la lectura + cuentas × resolución)
     const absError = (pct / 100) * absVal + counts * rango.res;
     const compError = calcularComponentes(absError, 1);
     const textoMedicion = formatearConComponentes(valor, compError.exponente, compError.decimalesMantisa);
+
+    // --- Error relativo con valores REDONDEADOS ---
+    // Antes se dividía el error crudo entre la lectura cruda (ej. 2,47/217).
+    // Ahora se redondean primero ambos y recién después se divide (ej. 2/217):
+    //  1) el error se redondea a 1 cifra significativa (numérico, en unidad base);
+    //  2) la lectura se redondea a la misma posición decimal que ese error;
+    //  3) e_r = error_redondeado / |lectura_redondeada| × 100.
+    const dErr = Math.floor(Math.log10(absError)) + 1;          // dígitos enteros del error crudo
+    const errRed = roundHalfEven(absError, 1 - dErr);            // error a 1 cifra significativa
+    const dErrFinal = errRed === 0 ? 1 : Math.floor(Math.log10(errRed)) + 1; // por si el redondeo sube de orden (9,6 → 10)
+    const posDecimalErr = 1 - dErrFinal;                         // posición decimal de la única cifra del error
+    const valRed = roundHalfEven(valor, posDecimalErr);          // lectura redondeada a esa misma posición
     let relTexto = null;
-    if (absVal > 0){
-      const relError = (absError / absVal) * 100;
-      relTexto = calcularComponentes(relError, 2).texto;
+    if (valRed !== 0){
+      const relError = (errRed / Math.abs(valRed)) * 100;
+      relTexto = calcularComponentes(relError, 2).texto;         // 2 cifras significativas
     }
+
     let caveat = null;
     if (cfg.acCaveatPct && absVal < cfg.acCaveatPct * rango.max - eps){
       caveat = `La lectura está por debajo del ${(cfg.acCaveatPct * 100).toFixed(0)} % del rango: el fabricante no garantiza la exactitud en esta zona.`;
@@ -620,7 +635,7 @@
   const msgCaveat = document.getElementById('msg-caveat');
   const panelResultado = document.getElementById('panel-resultado');
   const rCompacta = document.getElementById('r-compacta');
-  const rRelativo = document.getElementById('r-relativo');
+  const rDesglose = document.getElementById('r-desglose');
   const rDetalle = document.getElementById('r-detalle');
 
   function funcionesDelModelo(){
@@ -721,9 +736,10 @@
       return;
     }
 
-    const formulaTexto = cfg.bandas
-      ? `± (${cfg.bandas.find(b => b.key === bandaKey).pct} % + ${cfg.bandas.find(b => b.key === bandaKey).counts} cuentas)`
-      : `± (${r.pct} % + ${r.counts} cuentas)`;
+    // Texto de la fórmula aplicada: se aclara que el porcentaje se calcula
+    // "de la lectura" (no del rango completo), como en la hoja de datos Fluke.
+    // r.pct y r.counts ya vienen de la banda elegida cuando la función tiene bandas.
+    const formulaTexto = `± (${r.pct} % de la lectura + ${r.counts} cuentas)`;
     infoRango.innerHTML =
       `Rango detectado: <strong>${r.rangoLabel}</strong> · resolución ${r.resolucion} ${cfg.unidad}<br>` +
       `Fórmula aplicada: ${formulaTexto}${r.tipico ? ' (valor típico)' : ''}`;
@@ -736,12 +752,17 @@
       msgCaveat.classList.remove('oculto');
     }
 
-    if (r.exponente !== 0){
-      rCompacta.textContent = `(${r.textoMedicion} ± ${r.textoError})e${r.exponente} ${cfg.unidad}`;
-    } else {
-      rCompacta.textContent = `(${r.textoMedicion} ± ${r.textoError}) ${cfg.unidad}`;
-    }
-    rRelativo.textContent = r.relTexto !== null ? `${r.relTexto} %` : '— (lectura igual a 0)';
+    // Fila única: (valor ± error absoluto) (unidad); error relativo %
+    // Si hay exponente de ingeniería se antepone como "e" tras el paréntesis.
+    const expTxt = r.exponente !== 0 ? `e${r.exponente}` : '';
+    const relTxt = r.relTexto !== null ? `${r.relTexto} %` : '— (valor redondeado igual a 0)';
+    rCompacta.textContent = `(${r.textoMedicion} ± ${r.textoError})${expTxt} (${cfg.unidad}); ${relTxt}`;
+
+    // Desglose que indica cada magnitud por separado
+    rDesglose.innerHTML =
+      `Resultado: <span>${r.textoMedicion}${expTxt} ${cfg.unidad}</span><br>` +
+      `Error absoluto: <span>± ${r.textoError}${expTxt} ${cfg.unidad}</span><br>` +
+      `Error relativo porcentual: <span>${relTxt}</span>`;
     rDetalle.textContent = `${MODELOS[selModelo.value].nombre} · ${cfg.nombre} · lectura original: ${lecturaRaw} ${selUnidad.value}${cfg.bandas ? ' · banda: ' + cfg.bandas.find(b => b.key === bandaKey).label : ''}`;
     panelResultado.classList.remove('oculto');
   }
