@@ -254,7 +254,8 @@
   }
   .dato .etiqueta{
     font-size:11px;
-    color:var(--ink-faint);
+    color:var(--accent);
+    font-weight:600;
     margin-bottom:0.2rem;
   }
   .dato .valor{
@@ -434,7 +435,7 @@
     <p class="eyebrow">Instrumento de análisis · Física I, pág. 11–13</p>
     <h1>Analizador de serie de mediciones</h1>
     <p>Calcula media, desviación estándar de la muestra, error de la media y el
-    resultado final redondeado según la regla e_x = max(σ_x, P).</p>
+    resultado final redondeado según la regla e_x = max(σ_x, e_i).</p>
   </header>
 
   <!-- PASO 01: SERIE DE MEDICIONES -->
@@ -452,8 +453,8 @@
       <button type="button" class="btn-e" data-target="medicion" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
     </div>
     <p class="hint" style="font-size:12px; opacity:0.7; margin:0.4rem 0 0;">
-      Para notación científica escribí, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado
-      numérico del celular no hay tecla "e": usá el botón ×10ⁿ (e).
+      Para notación científica escribe, p. ej., <code>1.5e-3</code> (no con "^"). En el teclado
+      numérico del celular no hay tecla "e": usa el botón ×10ⁿ (e).
     </p>
     <div class="mensaje error" id="msg-medicion"></div>
     <div class="lista-mediciones" id="lista-mediciones"></div>
@@ -462,22 +463,37 @@
       <div class="etiqueta">Media aritmética parcial (x̄)</div>
       <div class="valor" id="media-parcial-valor">—</div>
     </div>
+    <div style="margin-top:0.9rem;">
+      <label class="campo-label" for="unidad-resultado">Unidad de medida del resultado (opcional)</label>
+      <input type="text" id="unidad-resultado" placeholder="ej. V, cm, °C" />
+      <p class="hint" style="font-size:12px; opacity:0.7; margin:0.35rem 0 0;">
+        Se usa solo para mostrarla junto al resultado final, entre paréntesis. Si en el Paso 02
+        eliges la Tabla de exactitud — Fluke, la unidad se toma automáticamente de la función
+        seleccionada y este campo se ignora.
+      </p>
+    </div>
   </section>
 
-  <!-- PASO 02: ERROR INSTRUMENTAL (P) -->
+  <!-- PASO 02: ERROR INSTRUMENTAL (e_i) -->
   <section class="panel">
     <div class="panel-head">
       <span class="paso-badge">PASO 02</span>
-      <h2>Error instrumental (P)</h2>
+      <h2>Error instrumental (e_i)</h2>
     </div>
-    <label class="campo-label" for="modo-p">¿Cómo se determina P?</label>
+    <label class="campo-label" for="modo-p">¿Cómo se determina e_i?</label>
     <select id="modo-p">
       <option value="manual">Manual (resolución/apreciación del instrumento)</option>
       <option value="fluke">Tabla de exactitud — Fluke</option>
     </select>
+    <p class="hint" style="font-size:12px; opacity:0.75; margin:0.55rem 0 0;">
+      En instrumentos analógicos (vernier, regla, tornillo micrométrico) e_i es la resolución
+      o mínima división de la escala. En instrumentos digitales, como el Fluke, e_i se calcula
+      con la fórmula de exactitud del fabricante (± % de la lectura + cuentas), según la clase
+      de exactitud del instrumento.
+    </p>
 
     <div id="bloque-manual" style="margin-top:0.9rem;">
-      <label class="campo-label" for="precision">Resolución (apreciación) del instrumento (P)</label>
+      <label class="campo-label" for="precision">Error instrumental — resolución del instrumento (e_i)</label>
       <div class="fila-valor-e">
         <input type="text" id="precision" inputmode="decimal" enterkeyhint="done" placeholder="ej. 0.01" />
         <button type="button" class="btn-e" data-target="precision" title="Inserta &quot;e&quot;, p. ej. 1.5 → 1.5e-3">×10ⁿ (e)</button>
@@ -505,7 +521,7 @@
       </div>
 
       <p class="hint" style="font-size:12px; opacity:0.7; margin:0.5rem 0 0;">
-        P se calcula con la fórmula de exactitud del modelo elegido (± % de lectura + cuentas)
+        e_i se calcula con la fórmula de exactitud del modelo elegido (± % de la lectura + cuentas)
         usando la media de tus mediciones (x̄) como valor representativo, con el rango detectado
         automáticamente a partir de esa media.
       </p>
@@ -711,17 +727,18 @@
   }
 
   // Formato "de figura de manual": coma decimal, paréntesis, unidad entre
-  // corchetes (seguida de coma) y error porcentual al final, sin punto final.
-  // Ej: (6,3 ± 0,1)[u], 1,6 %
+  // paréntesis (si se indicó) y error porcentual al final tras punto y coma.
+  // Ej: (6,3 ± 0,1) (V); 1,6 %
   function formatearResultadoFigura(valor, error, errorPorcentualStr, unidad){
     const info = redondearConError(valor, error);
     const valorComa = info.valorStr.replace('.', ',');
     const errorComa = info.errorStr.replace('.', ',');
     const pctComa = errorPorcentualStr.replace('.', ',');
+    const unidadTxt = unidad ? ` (${unidad})` : '';
     if (info.modo === 'ingenieria'){
-      return `(${valorComa} \u00B1 ${errorComa}) \u00D7 10^${info.exponente}[${unidad}], ${pctComa} %`;
+      return `(${valorComa} \u00B1 ${errorComa}) \u00D7 10^${info.exponente}${unidadTxt}; ${pctComa} %`;
     }
-    return `(${valorComa} \u00B1 ${errorComa})[${unidad}], ${pctComa} %`;
+    return `(${valorComa} \u00B1 ${errorComa})${unidadTxt}; ${pctComa} %`;
   }
 
   // Redondeo a N cifras significativas (round-half-up), para valores sin
@@ -878,7 +895,7 @@
 
   // Busca el rango que corresponde a "valor" (ya en la unidad base) y
   // devuelve el error instrumental CRUDO (sin redondear) según la fórmula
-  // ± (% de lectura + cuentas), junto con los datos de trazabilidad
+  // ± (% de la lectura + cuentas), junto con los datos de trazabilidad
   // (rango detectado, resolución, fórmula, aviso de rango mínimo).
   function calcularPInstrumentalCrudo(modeloKey, funcKey, valor, bandaKey){
     const cfg = FLUKE_MODELOS[modeloKey].funciones[funcKey];
@@ -895,7 +912,7 @@
     let pct, counts;
     if (cfg.bandas){
       const banda = cfg.bandas.find(b => b.key === bandaKey);
-      if (!banda) return { error: 'Seleccioná la banda de frecuencia.' };
+      if (!banda) return { error: 'Selecciona la banda de frecuencia.' };
       pct = banda.pct; counts = banda.counts;
     } else {
       pct = rango.pct; counts = rango.counts;
@@ -947,6 +964,7 @@
 
   const inputPrecision = document.getElementById('precision');
   const inputMedicion = document.getElementById('medicion');
+  const inputUnidadResultado = document.getElementById('unidad-resultado');
   const btnAgregar = document.getElementById('btn-agregar');
   const btnCalcular = document.getElementById('btn-calcular');
   const btnReiniciar = document.getElementById('btn-reiniciar');
@@ -1030,7 +1048,7 @@
     btnCalcular.disabled = !(mediciones.length >= 2 && (modoP === 'fluke' || precisionManualLista));
 
     // Media aritmética parcial: se muestra apenas hay datos cargados,
-    // antes de pasar al paso 2 (resolución del instrumento).
+    // antes de pasar al paso 2 (error instrumental).
     if (mediciones.length >= 1){
       const mediaParcial = mediciones.reduce((a, b) => a + b, 0) / mediciones.length;
       mediaParcialValorEl.textContent = 'x̄ = ' + fmtTabla(mediaParcial, 6);
@@ -1090,7 +1108,7 @@
       e.preventDefault();
       const precisionVal = Number(inputPrecision.value);
       if (inputPrecision.value === '' || Number.isNaN(precisionVal) || precisionVal < 0){
-        msgPrecision.textContent = 'Ingrese una resolución (apreciación) numérica no negativa.';
+        msgPrecision.textContent = 'Ingrese un error instrumental (e_i) numérico no negativo.';
         msgPrecision.classList.add('error');
         return;
       }
@@ -1105,6 +1123,7 @@
     mediciones = [];
     inputPrecision.value = '';
     inputMedicion.value = '';
+    inputUnidadResultado.value = '';
     flukeInfoRango.classList.add('oculto');
     msgPrecision.classList.remove('error', 'advertencia');
     msgPrecision.textContent = '';
@@ -1151,12 +1170,15 @@
 
       precision = redondearErrorUnaCifra(r.pCrudo);
 
+      // Fórmula de exactitud en texto: se aclara que el porcentaje se aplica
+      // sobre la lectura (no sobre el rango completo), como en la hoja de
+      // datos del fabricante.
       const formulaTexto = cfg.bandas
-        ? `± (${cfg.bandas.find(b => b.key === bandaKey).pct} % + ${cfg.bandas.find(b => b.key === bandaKey).counts} cuentas)`
-        : `± (${r.pct} % + ${r.counts} cuentas)`;
+        ? `± (${cfg.bandas.find(b => b.key === bandaKey).pct} % de la lectura + ${cfg.bandas.find(b => b.key === bandaKey).counts} cuentas)`
+        : `± (${r.pct} % de la lectura + ${r.counts} cuentas)`;
       flukeInfoRango.innerHTML =
         `${FLUKE_MODELOS[modeloKey].nombre} · Rango detectado (según x̄ = ${mediaPrevia.toFixed(4)} ${cfg.unidad}): <strong>${r.rangoLabel}</strong> · resolución ${r.resolucion} ${cfg.unidad}<br>` +
-        `Fórmula aplicada: ${formulaTexto}${r.tipico ? ' (valor típico)' : ''} · P crudo = ${r.pCrudo.toFixed(6)} → redondeado a 1 cifra: ${precision}`;
+        `Fórmula aplicada: ${formulaTexto}${r.tipico ? ' (valor típico)' : ''} · e_i crudo = ${r.pCrudo.toFixed(6)} → redondeado a 1 cifra: ${precision}`;
       flukeInfoRango.classList.remove('oculto');
 
       if (r.caveat){
@@ -1166,7 +1188,7 @@
     } else {
       precision = Number(inputPrecision.value);
       if (Number.isNaN(precision) || precision < 0){
-        msgPrecision.textContent = 'Ingrese una resolución (apreciación) numérica no negativa.';
+        msgPrecision.textContent = 'Ingrese un error instrumental (e_i) numérico no negativo.';
         msgPrecision.classList.add('error');
         return;
       }
@@ -1213,7 +1235,7 @@
     // desviación estándar de la muestra = σ_(n-1), error de la media = σ_x.
     document.getElementById('calculos-derivados').innerHTML =
       `<div class="cd-bloque">
-        <div class="cd-titulo">Varianza muestral (con N \u2212 1 grados de libertad, ya que se usa la media estimada de los datos):</div>
+        <div class="cd-titulo">Varianza muestral (con N \u2212 1, ya que el n\u00famero de datos es menor o igual a 20):</div>
         <div class="cd-formula">s\u00B2 = \u03A3d\u1D62\u00B2 / (N \u2212 1) = ${fmtTabla(resultados.sumaCuadrado, decTabla)} / ${resultados.n - 1} = ${fmtTabla(resultados.varianza, decTabla)}</div>
       </div>
       <div class="cd-bloque">
@@ -1233,9 +1255,11 @@
     const datosGrid = [
       ['Media aritmética (x̄)', resultados.media.toFixed(10)],
       ['Varianza muestral (s²)', resultados.varianza.toFixed(10)],
-      ['Desviación estándar (σ_(n-1))', resultados.sigmaNMinus1.toFixed(10)],
+      ['Desviación estándar de la muestra (σ_(n-1))', resultados.sigmaNMinus1.toFixed(10)],
       ['Error de la media (σ_x)', resultados.sigmaMedia.toFixed(10)],
-      [modoP === 'fluke' ? 'Error instrumental (Fluke 117, Tabla 1) usado como P' : 'Resolución (apreciación) del instrumento (P)', String(precision)]
+      [modoP === 'fluke'
+        ? `Error instrumental (e_i) — ${FLUKE_MODELOS[selFlukeModelo.value].nombre}, Tabla 1 (fórmula del fabricante)`
+        : 'Error instrumental (e_i) — resolución del instrumento', String(precision)]
     ];
     datosGrid.forEach(([etiqueta, valor]) => {
       const div = document.createElement('div');
@@ -1253,17 +1277,17 @@
     let comparacion;
     if (errorMediaRedondeado > precision){
       criterio = 'Error de la media aritmética (σ_x)';
-      comparacion = `Como σ_x (${errorMediaRedondeado}) > P (${precision}) → se selecciona e_x = σ_x`;
+      comparacion = `Como σ_x (${errorMediaRedondeado}) > e_i (${precision}) → se selecciona e_x = σ_x`;
       resultadoFinal = formatearValorError(resultados.media, errorMediaRedondeado);
       errorFinal = errorMediaRedondeado;
     } else if (precision > errorMediaRedondeado){
-      criterio = 'Resolución (apreciación) del instrumento (P)';
-      comparacion = `Como P (${precision}) > σ_x (${errorMediaRedondeado}) → se selecciona e_x = P`;
+      criterio = 'Error instrumental (e_i)';
+      comparacion = `Como e_i (${precision}) > σ_x (${errorMediaRedondeado}) → se selecciona e_x = e_i`;
       resultadoFinal = resultadoConPrecision;
       errorFinal = precision;
     } else {
-      criterio = 'Ambos son iguales (σ_x = P)';
-      comparacion = `σ_x (${errorMediaRedondeado}) = P (${precision})`;
+      criterio = 'Ambos son iguales (σ_x = e_i)';
+      comparacion = `σ_x (${errorMediaRedondeado}) = e_i (${precision})`;
       resultadoFinal = formatearValorError(resultados.media, errorMediaRedondeado);
       errorFinal = errorMediaRedondeado;
     }
@@ -1271,25 +1295,35 @@
     const valorFinal = redondearValorSegunError(resultados.media, errorFinal);
     const errorPorcentualCrudo = valorFinal !== 0 ? (errorFinal / Math.abs(valorFinal)) * 100 : 0;
     const errorPorcentualStr = redondearCifrasSignificativas(errorPorcentualCrudo, 2);
-    const resultadoFigura = formatearResultadoFigura(resultados.media, errorFinal, errorPorcentualStr, 'u');
+
+    // Unidad del resultado final: en modo Fluke se toma automáticamente la
+    // unidad base de la función elegida (porque los datos ya se convirtieron
+    // a esa unidad antes de calcular); en modo manual, la que se haya escrito
+    // en el campo "Unidad de medida del resultado" del Paso 01 (opcional).
+    const unidadFinal = modoP === 'fluke'
+      ? FLUKE_MODELOS[selFlukeModelo.value].funciones[selFlukeFuncion.value].unidad
+      : inputUnidadResultado.value.trim();
+    const resultadoFigura = formatearResultadoFigura(resultados.media, errorFinal, errorPorcentualStr, unidadFinal);
 
     ultimoRedondeo = { valorFinal, errorFinal, resultadoFinal, criterio, errorPorcentualStr, resultadoFigura };
 
     const bitacora = document.getElementById('bitacora');
     bitacora.innerHTML =
-      `<span class="paso-titulo">PASO 6 — Media ± Resolución</span>\n` +
-      `Media ± Resolución = ${resultadoConPrecision}\n\n` +
+      `<span class="paso-titulo">PASO 6 — Media ± Error instrumental</span>\n` +
+      `Media ± e_i = ${resultadoConPrecision}\n\n` +
       `<span class="paso-titulo">PASO 7 — Comparación y selección</span>\n` +
-      `Regla: e_x = max(σ_x, P)\n` +
-      `σ_x = ${errorMediaRedondeado}   |   P = ${precision}\n` +
-      `${comparacion}\n` +
+      `La regla consiste en tomar como error final (e_x) el mayor valor entre el error de\n` +
+      `la media aritmética (σ_x) y el error instrumental (e_i):\n\n` +
+      `e_x = max(σ_x, e_i)\n` +
+      `σ_x = ${errorMediaRedondeado}   |   e_i = ${precision}\n\n` +
+      `${comparacion}\n\n` +
       `Criterio seleccionado: <span class="criterio">${criterio}</span>\n\n` +
-      `<span class="paso-titulo">Error porcentual</span>\n` +
+      `<span class="paso-titulo">Error relativo porcentual</span>\n` +
       `e_x / |valor| \u00D7 100 = ${errorPorcentualCrudo.toFixed(6)}% \u2192 redondeado a 2 cifras significativas: ${errorPorcentualStr}%`;
 
     document.getElementById('r-valor').textContent = resultadoFigura;
     document.getElementById('r-criterio').textContent = `Criterio: ${criterio}`;
-    document.getElementById('r-porcentual').textContent = `Error porcentual: ${errorPorcentualStr}% (2 cifras significativas)`;
+    document.getElementById('r-porcentual').textContent = `Error relativo porcentual: ${errorPorcentualStr}% (2 cifras significativas)`;
 
     document.getElementById('panel-bitacora').classList.remove('oculto');
     document.getElementById('contenedor-graficos').classList.add('oculto');
@@ -1454,4 +1488,3 @@
 
 </body>
 </html>
-
