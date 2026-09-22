@@ -669,7 +669,7 @@
     }
     const errorRed = roundHalfEven(error, decimales);
     const valorRed = roundHalfEven(valor, decimales);
-    const texto = `${valorRed.toFixed(decimales)} ± ${errorRed.toFixed(decimales)}`;
+    const texto = `(${valorRed.toFixed(decimales)} ± ${errorRed.toFixed(decimales)})`;
     return { texto, valorRed, errorRed };
   }
 
@@ -682,7 +682,7 @@
   // error < 0.001 (exponente negativo). En el rango intermedio el
   // exponente sería 0 y corresponde la notación decimal normal.
   function formatearResultadoFinal(valor, error){
-    if (!(error > 0)) return `${valor} ± 0`;
+    if (!(error > 0)) return `(${valor} \u00B1 0)`;
     return (error >= 10 || error < 0.001)
       ? formatearIngenieria(valor, error)
       : formatearNormal(valor, error);
@@ -696,7 +696,7 @@
   // reportado debe corresponder al resultado que efectivamente se
   // publica, no a la cifra interna de más precisión.
   function redondearResultadoFinal(valor, error){
-    if (!(error > 0)) return { texto: `${valor} ± 0`, valorRed: valor, errorRed: 0 };
+    if (!(error > 0)) return { texto: `(${valor} \u00B1 0)`, valorRed: valor, errorRed: 0 };
     return (error >= 10 || error < 0.001)
       ? redondearIngenieria(valor, error)
       : redondearNormal(valor, error);
@@ -943,8 +943,8 @@
       : Infinity;
 
     const pctFormateado = formatearErrorPorcentual(errorPorcentual);
-    // Formato combinado: "(0.51 ± 0.02) × 10^-3 [u]; 3.5%"
-    document.getElementById('r-valor').textContent = `${baseFormateado} [u]; ${pctFormateado}`;
+    // Formato combinado: "(0.51 ± 0.02) × 10^-3 (u); 3.5%"
+    document.getElementById('r-valor').textContent = `${baseFormateado} (u); ${pctFormateado}`;
     document.getElementById('panel-final').classList.remove('oculto');
   }
 
