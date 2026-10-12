@@ -187,6 +187,16 @@ function mag10(x) {
   return Math.floor(Math.log10(Math.abs(x)));
 }
 
+// Redondea `valor` a la posición decimal 10^mag, con mag POSITIVO o NEGATIVO
+// (redondeo bancario). Ejemplos: mag=-2 -> centésimas; mag=2 -> centenas
+// (71095 -> 71100). Es lo que faltaba: redondeoBancario() solo admite
+// decimales >= 0 y por eso dejaba cifras "de más" cuando el error era >= 10.
+function redondearAPosicion(valor, mag) {
+  if (mag < 0) return redondeoBancario(valor, -mag);
+  const f = Math.pow(10, mag);
+  return redondeoBancario(valor / f, 0) * f;
+}
+
 // Caso B/C interno: 1 <= error, decide entero o notación de ingeniería.
 function redondearEnteroOIngenieria(valor, error) {
   const eRedondeado = redondeoBancario(error, 0);
@@ -223,9 +233,11 @@ function redondearIngenieriaChica(valor, error, magEr) {
   const exp = 3 * Math.floor(magEr / 3);
   const factor = Math.pow(10, exp);
   const magNorm = magEr - exp; // queda en {0, 1, 2} -> mantisa en [1, 1000)
-  const decimales = Math.max(0, -magNorm);
-  const eNorm = redondeoBancario(error / factor, decimales);
-  const vNorm = redondeoBancario(valor / factor, decimales);
+  // El valor se redondea a la MISMA posición de la única cifra significativa
+  // del error (p. ej. error 700 -> valor a centenas: 71095 -> 71100).
+  const decimales = 0; // con magNorm >= 0 siempre se muestran enteros
+  const eNorm = redondearAPosicion(error / factor, magNorm);
+  const vNorm = redondearAPosicion(valor / factor, magNorm);
   return { v: vNorm, e: eNorm, decimales, exp };
 }
 
@@ -241,7 +253,9 @@ function redondearPar(valor, error) {
     if (eRedondeado === 0) return { v: valor, e: 0, decimales: 0, exp: false };
     if (Math.abs(eRedondeado) >= 1) return redondearEnteroOIngenieria(valor, eRedondeado);
     const magEr = mag10(eRedondeado);
-    if (magEr <= -4) return redondearIngenieriaChica(valor, eRedondeado, magEr);
+    // Notación de ingeniería SOLO si el error < 0.0001 (magEr <= -5).
+    // Con error 0.0007 (magEr = -4) se escribe en decimales: 0.0711 ± 0.0007.
+    if (magEr <= -5) return redondearIngenieriaChica(valor, eRedondeado, magEr);
     const decimales = Math.max(0, -magEr);
     const vRedondeado = redondeoBancario(valor, decimales);
     return { v: vRedondeado, e: eRedondeado, decimales, exp: false };
@@ -258,11 +272,15 @@ function forzarExponente(valor, error, expObjetivo) {
   const vNorm = valor / factor;
   const eNorm = error / factor;
   if (error === 0) return { v: vNorm, e: 0, decimales: 0 };
+  // 1) El error normalizado se redondea a UNA cifra significativa, incluso
+  //    cuando su magnitud es positiva (34498.4 -> 30000).
   const magNorm = mag10(eNorm);
-  const eRed = redondeoBancario(eNorm, Math.max(0, -magNorm));
+  const eRed = redondearAPosicion(eNorm, magNorm);
+  // 2) Se recalcula la magnitud tras redondear (por si hubo acarreo, 0.96 -> 1)
+  //    y el valor se redondea a esa misma posición (16007976 -> 16010000).
   const magEr = eRed !== 0 ? mag10(eRed) : 0;
   const decimales = Math.max(0, -magEr);
-  const vRed = redondeoBancario(vNorm, decimales);
+  const vRed = redondearAPosicion(vNorm, magEr);
   return { v: vRed, e: eRed, decimales };
 }
 
