@@ -31,12 +31,17 @@ input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);bord
 </head>
 <body>
 <main>
-  <h1>Calibre virtual — nonio de 0,05 mm</h1>
+  <h1 id="ttl">Calibre virtual — nonio de 0,05 mm</h1>
   <p class="sub">Simulador para practicar la lectura del calibre (pie de rey). Arrastra el cursor, usa el deslizador o las flechas del teclado (Shift = 1 mm).</p>
 
   <div class="card">
     <svg id="main" viewBox="0 0 1240 380" aria-label="Calibre virtual"></svg>
     <div id="loupeWrap"><svg id="loupe" viewBox="0 95 280 150"><use href="#inst"/></svg></div>
+    <div class="row">
+      <label>Resolución del nonio&nbsp;
+        <select id="res"><option value="0.05">0,05 mm (20 divisiones)</option><option value="0.02">0,02 mm (50 divisiones)</option></select>
+      </label>
+    </div>
     <div class="row">
       <input type="range" id="rng" min="0" max="100" step="0.05" value="0" aria-label="Apertura del calibre">
       <b id="dLbl" style="min-width:90px;text-align:right"></b>
@@ -60,13 +65,13 @@ input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);bord
   </div>
 
   <div class="card">
-    <b>Cómo leer el nonio de 0,05 mm</b>
+    <b id="how">Cómo leer el nonio</b>
     <ol style="margin:6px 0 0;padding-left:20px">
       <li>Lee en la escala fija los <b>milímetros enteros</b> que quedan a la izquierda del cero del nonio.</li>
       <li>Busca la marca del nonio que <b>coincide</b> con una marca de la escala fija.</li>
-      <li>Multiplica esa marca por <b>0,05 mm</b> y súmala. Ejemplo: 23 mm + 7 × 0,05 = <b>23,35 mm</b>.</li>
+      <li id="li3"></li>
     </ol>
-    <div class="hint">El nonio tiene 20 divisiones que ocupan 19 mm, por eso cada marca avanza 0,95 mm y la diferencia con la escala fija es 0,05 mm.</div>
+    <div class="hint" id="why"></div>
   </div>
 </main>
 
@@ -74,7 +79,9 @@ input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);bord
 'use strict';
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
-const VBW = 1240, K = 8.5, X0 = 60, DMAX = 100, STEP = 0.05;   // K = píxeles por mm
+const VBW = 1240, K = 8.5, X0 = 60;                      // K = píxeles por mm
+let STEP = 0.05, N = 20, DMAX = 100;                      // resolución, divisiones del nonio, apertura máxima (mm)
+const sliderW = () => (N - 1) * K + 70;
 const main = $('main');
 main.innerHTML = `
 <defs>
@@ -113,18 +120,21 @@ function drawInst() {
   if (objSize != null) s += `<rect x="${X0}" y="215" width="${objSize * K}" height="105" fill="url(#blk)" stroke="#3b4452" stroke-width="1.5"/><text x="${X0 + objSize * K / 2}" y="274" text-anchor="middle" font-size="15" fill="#fff" opacity=".85">pieza</text>`;
   // ---- cursor (nonio) + mordaza móvil
   s += `<g data-slider="1" style="cursor:ew-resize">`;
-  s += `<path d="M${zx} 170 H${zx + 330} Q${zx + 345} 170 ${zx + 345} 185 V240 Q${zx + 345} 255 ${zx + 330} 255 H${zx + 34} V350 L${zx + 8} 350 L${zx} 330 Z" fill="url(#steel)" stroke="#6b7480" stroke-width="1.5"/>`;
-  s += `<rect x="${zx + 215}" y="196" width="94" height="44" rx="8" fill="#d8dee5" stroke="#8a94a1"/><text x="${zx + 262}" y="224" text-anchor="middle" font-size="13" fill="#44505e">0,05 mm</text>`;
-  // nonio: 20 divisiones = 19 mm -> 0,95 mm por marca
-  for (let i = 0; i <= 20; i++) {
-    const x = zx + i * 0.95 * K, even = i % 2 === 0;
+  const SW = sliderW();
+  s += `<path d="M${zx} 170 H${zx + SW} Q${zx + SW + 15} 170 ${zx + SW + 15} 185 V240 Q${zx + SW + 15} 255 ${zx + SW} 255 H${zx + 34} V350 L${zx + 8} 350 L${zx} 330 Z" fill="url(#steel)" stroke="#6b7480" stroke-width="1.5"/>`;
+  s += `<rect x="${zx + SW - 115}" y="222" width="94" height="26" rx="7" fill="#d8dee5" stroke="#8a94a1"/><text x="${zx + SW - 68}" y="240" text-anchor="middle" font-size="13" fill="#44505e">${fmt(STEP)} mm</text>`;
+  // nonio: N divisiones ocupan N-1 mm -> cada marca avanza (N-1)/N mm
+  const per = N / 10;                      // marcas entre dos números (cada número = 0,1 mm)
+  for (let i = 0; i <= N; i++) {
+    const x = zx + i * ((N - 1) / N) * K, even = i % per === 0;
     s += `<line x1="${x}" y1="170" x2="${x}" y2="${170 + (even ? 24 : 15)}" stroke="#111" stroke-width="${i === 0 ? 2.2 : 1.1}"/>`;
-    if (even) s += `<text x="${x}" y="${170 + 40}" text-anchor="middle" font-size="13" font-weight="600" fill="${i === 0 ? '#b91c1c' : '#111'}">${i / 2}</text>`;
+    if (even) s += `<text x="${x}" y="${170 + 40}" text-anchor="middle" font-size="13" font-weight="600" fill="${i === 0 ? '#b91c1c' : '#111'}">${i / per}</text>`;
   }
   s += `</g>`;
   $('inst').innerHTML = s;
   // lupa centrada en el cero del nonio
-  $('loupe').setAttribute('viewBox', `${zx - 22} 118 280 150`);
+  const Lw = Math.max(280, sliderW() + 20), Lh = Lw * 150 / 280;
+  $('loupe').setAttribute('viewBox', `${zx - 22} ${Lh > 160 ? 112 : 118} ${Lw} ${Lh}`);
   $('rng').value = d; $('dLbl').textContent = '';
   $('dLbl').textContent = practice && !answered ? '' : fmt(d) + ' mm';
   updateRead();
@@ -134,8 +144,8 @@ function updateRead() {
   const visible = showRead && (!practice || answered);
   box.style.display = visible ? 'block' : 'none';
   if (!visible) return;
-  const n = Math.round(d / STEP), whole = Math.floor(n / 20 + 1e-9), k = n - whole * 20;
-  box.innerHTML = `Escala fija: <b>${whole} mm</b> &nbsp;+&nbsp; marca del nonio que coincide: <b>${k}</b> × 0,05 = <b>${fmt(k * STEP)} mm</b><br>Lectura: <b>${fmt(whole + k * STEP)} mm</b>`;
+  const n = Math.round(d / STEP), whole = Math.floor(n / N + 1e-9), k = n - whole * N;
+  box.innerHTML = `Escala fija: <b>${whole} mm</b> &nbsp;+&nbsp; marca del nonio que coincide: <b>${k}</b> × ${fmt(STEP)} = <b>${fmt(k * STEP)} mm</b><br>Lectura: <b>${fmt(whole + k * STEP)} mm</b>`;
 }
 function setD(v) { d = Math.min(DMAX, Math.max(minD, snap(v))); drawInst(); }
 
@@ -165,7 +175,7 @@ $('bPrac').onclick = e => {
   if (practice) newPiece(); else { objSize = null; minD = 0; answered = false; drawInst(); }
 };
 function newPiece() {
-  objSize = Math.round((5 + Math.random() * 80) / STEP) * STEP; minD = objSize; answered = false;
+  objSize = Math.round((5 + Math.random() * (Math.min(80, DMAX - 25) - 5)) / STEP) * STEP; minD = objSize; answered = false;
   $('ans').value = ''; $('fb').textContent = ''; $('fb').style.color = '';
   d = Math.min(DMAX, objSize + 10 + Math.random() * 10); d = snap(d); drawInst(); $('ans').focus();
 }
@@ -181,7 +191,22 @@ function check() {
 }
 $('bCheck').onclick = check;
 $('ans').addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
-setD(23.35);
+function setRes(r) {
+  STEP = r; N = Math.round(1 / r);
+  DMAX = Math.min(100, Math.floor((VBW - 10 - X0 - sliderW() - 15) / K));
+  const rg = $('rng'); rg.max = DMAX; rg.step = r;
+  const per = N / 10, ex = r === 0.05 ? 7 : 18;
+  document.title = 'Calibre virtual ' + fmt(r) + ' mm';
+  $('ttl').textContent = 'Calibre virtual — nonio de ' + fmt(r) + ' mm';
+  $('how').textContent = 'Cómo leer el nonio de ' + fmt(r) + ' mm';
+  $('li3').innerHTML = 'Multiplica esa marca por <b>' + fmt(r) + ' mm</b> y súmala. Ejemplo: 23 mm + ' + ex + ' × ' + fmt(r) + ' = <b>' + fmt(23 + ex * r) + ' mm</b>.';
+  $('why').textContent = 'El nonio tiene ' + N + ' divisiones que ocupan ' + (N - 1) + ' mm, por eso cada marca avanza ' + fmt((N - 1) / N) + ' mm y la diferencia con la escala fija es ' + fmt(r) + ' mm. '
+    + 'Los números del nonio (0 a 10) son décimas de milímetro; entre dos números hay ' + per + ' marcas de ' + fmt(r) + ' mm.';
+  $('ans').placeholder = 'Lectura en mm';
+  if (practice) newPiece(); else setD(d);
+}
+$('res').onchange = e => setRes(parseFloat(e.target.value));
+setRes(0.05); setD(23.35);
 </script>
 </body>
 </html>
