@@ -1,430 +1,187 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulador de Calibrador (Vernier) 1/20 mm</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calibre virtual 0,05 mm</title>
 <style>
-  :root{
-    --paper:#14181A;
-    --paper-grid: rgba(255,255,255,0.035);
-    --card:#1B211D;
-    --card-border:#2C352F;
-    --surface-2:#12160F;
-    --ink:#E9ECE4;
-    --ink-soft:#9BA89C;
-    --ink-faint:#66716A;
-    --accent:#5FCB93;
-    --accent-dark:#3F9E6F;
-    --accent-soft:rgba(95,203,147,0.15);
-    --nonio:#E3A64F;
-    --nonio-soft:rgba(227,166,79,0.15);
-    --danger:#E2695A;
-    --danger-soft:rgba(226,105,90,0.14);
-    --readout-bg:#0D1712;
-    --readout-border:#23392C;
-    --font-mono:'JetBrains Mono', ui-monospace, monospace;
-    --font-sans:'IBM Plex Sans', system-ui, sans-serif;
-  }
-
-  *{ box-sizing:border-box; }
-
-  body{
-    margin:0;
-    padding:2.5rem 1.25rem 4rem;
-    background:
-      linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0/100% 28px,
-      linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px) 0 0/28px 100%,
-      var(--paper);
-    color:var(--ink);
-    font-family:var(--font-sans);
-    line-height:1.5;
-    display:flex;
-    justify-content:center;
-  }
-
-  .instrumento{
-    width:100%;
-    max-width:640px;
-  }
-
-  header.masthead{
-    margin-bottom:2rem;
-    padding-bottom:1.25rem;
-    border-bottom:1px solid var(--card-border);
-  }
-
-  .eyebrow{
-    font-family:var(--font-mono);
-    font-size:12px;
-    letter-spacing:0.14em;
-    color:var(--accent);
-    text-transform:uppercase;
-    margin:0 0 0.5rem;
-  }
-
-  h1{
-    font-size:24px;
-    font-weight:600;
-    margin:0 0 0.4rem;
-    letter-spacing:-0.01em;
-  }
-
-  .masthead p{
-    margin:0;
-    color:var(--ink-soft);
-    font-size:14px;
-    max-width:56ch;
-  }
-
-  .panel{
-    background:var(--card);
-    border:1px solid var(--card-border);
-    border-radius:6px;
-    padding:1.25rem 1.4rem;
-    margin-bottom:1rem;
-  }
-
-  .panel-head{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    gap:0.6rem;
-    margin-bottom:0.9rem;
-  }
-
-  .paso-badge{
-    font-family:var(--font-mono);
-    font-size:11px;
-    font-weight:600;
-    color:var(--accent);
-    background:var(--accent-soft);
-    border-radius:3px;
-    padding:2px 7px;
-    letter-spacing:0.04em;
-  }
-
-  .marcador{
-    font-family:var(--font-mono);
-    font-size:11.5px;
-    color:var(--ink-faint);
-  }
-
-  .lienzo-wrap{
-    background:var(--readout-bg);
-    border:1px solid var(--readout-border);
-    border-radius:6px;
-    padding:0.6rem 0.4rem;
-    overflow-x:auto;
-  }
-  .lienzo-wrap svg{ display:block; margin:0 auto; }
-
-  .leyenda{
-    display:flex;
-    gap:1.2rem;
-    justify-content:center;
-    margin-top:0.6rem;
-    font-family:var(--font-mono);
-    font-size:11px;
-    color:var(--ink-faint);
-  }
-  .leyenda span{ display:inline-flex; align-items:center; gap:0.35rem; }
-
-  .fila-respuesta{
-    display:flex;
-    gap:0.6rem;
-    align-items:flex-end;
-    margin-top:1.1rem;
-  }
-  .fila-respuesta > div{ flex:1; }
-
-  label.campo-label{
-    display:block;
-    font-size:12.5px;
-    color:var(--ink-soft);
-    margin-bottom:0.35rem;
-  }
-
-  input[type="text"]{
-    width:100%;
-    font-family:var(--font-mono);
-    font-size:15px;
-    padding:0.55rem 0.7rem;
-    border:1px solid var(--card-border);
-    border-radius:4px;
-    background:var(--surface-2);
-    color:var(--ink);
-  }
-  input:focus{
-    outline:none;
-    border-color:var(--accent);
-    box-shadow:0 0 0 3px var(--accent-soft);
-  }
-
-  button{
-    font-family:var(--font-sans);
-    font-size:13.5px;
-    font-weight:500;
-    border-radius:4px;
-    border:1px solid var(--card-border);
-    background:var(--card);
-    color:var(--ink);
-    padding:0.55rem 0.9rem;
-    cursor:pointer;
-    transition:background 0.12s ease, border-color 0.12s ease;
-  }
-  button:hover{ background:var(--accent-soft); border-color:var(--accent); }
-  button:active{ transform:translateY(1px); }
-
-  button.primario{
-    background:var(--accent);
-    border-color:var(--accent-dark);
-    color:var(--surface-2);
-    font-weight:600;
-  }
-  button.primario:hover{ background:var(--accent-dark); color:#EFFBF4; }
-
-  .acciones{
-    display:flex;
-    gap:0.6rem;
-    margin-top:1.1rem;
-  }
-
-  .oculto{ display:none !important; }
-
-  .feedback{
-    margin-top:1rem;
-    padding:0.8rem 1rem;
-    border-radius:4px;
-    font-size:13.5px;
-  }
-  .feedback.correcto{ background:var(--accent-soft); color:var(--accent); }
-  .feedback.incorrecto{ background:var(--danger-soft); color:var(--danger); }
-
-  .desglose{
-    margin-top:0.7rem;
-    font-family:var(--font-mono);
-    font-size:12.5px;
-    color:var(--ink-soft);
-    line-height:1.8;
-  }
-  .desglose .valor{ color:var(--ink); }
-  .marcador-nonio{ color:var(--nonio); }
-
-  .puntaje{
-    text-align:center;
-    font-family:var(--font-mono);
-    font-size:12.5px;
-    color:var(--ink-faint);
-    margin-top:0.4rem;
-  }
-
-  footer.pie{
-    margin-top:1.5rem;
-    font-size:11.5px;
-    color:var(--ink-faint);
-    text-align:center;
-  }
+:root{--bg:#eef1f5;--panel:#fff;--ink:#1f2328;--muted:#5b6472;--line:#d8dde5;--accent:#2563eb;--ok:#15803d;--bad:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Segoe UI",system-ui,sans-serif}
+main{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 2px}
+p.sub{margin:0 0 12px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+svg{display:block;width:100%;height:auto;touch-action:none;user-select:none}
+#loupeWrap{display:none;margin-top:10px;border:2px solid #475569;border-radius:10px;overflow:hidden;background:#fff}
+#loupeWrap svg{aspect-ratio:280/150}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{background:#f1f5f9}
+button.on{background:#dbeafe;border-color:var(--accent)}
+button.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+input[type=range]{flex:1;min-width:200px}
+input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;width:130px}
+#read{font-variant-numeric:tabular-nums;background:#f8fafc;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;margin-top:10px;display:none}
+#read b{font-size:18px}
+#prac{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+#fb{font-weight:600}
+.hint{color:var(--muted);font-size:13px;margin-top:6px}
 </style>
 </head>
 <body>
-<div class="instrumento">
+<main>
+  <h1>Calibre virtual — nonio de 0,05 mm</h1>
+  <p class="sub">Simulador para practicar la lectura del calibre (pie de rey). Arrastra el cursor, usa el deslizador o las flechas del teclado (Shift = 1 mm).</p>
 
-  <header class="masthead">
-    <p class="eyebrow">Simulador de práctica</p>
-    <h1>Lectura del calibrador (vernier) — 1/20 mm</h1>
-    <p>Escala principal en milímetros arriba, nonio de 20 divisiones abajo.
-    Encontrá la línea del nonio que coincide exactamente con una línea de
-    la escala principal e ingresá la lectura total.</p>
-  </header>
-
-  <section class="panel">
-    <div class="panel-head">
-      <span class="paso-badge">EJERCICIO</span>
-      <span class="marcador" id="precision-label">Precisión: 1/20 mm = 0,05 mm</span>
+  <div class="card">
+    <svg id="main" viewBox="0 0 1240 380" aria-label="Calibre virtual"></svg>
+    <div id="loupeWrap"><svg id="loupe" viewBox="0 95 280 150"><use href="#inst"/></svg></div>
+    <div class="row">
+      <input type="range" id="rng" min="0" max="100" step="0.05" value="0" aria-label="Apertura del calibre">
+      <b id="dLbl" style="min-width:90px;text-align:right"></b>
     </div>
-
-    <div class="lienzo-wrap">
-      <div id="svg-container"></div>
+    <div class="row">
+      <button id="bLoupe">🔍 Lupa</button>
+      <button id="bShow">👁 Mostrar lectura</button>
+      <button id="bPrac">🎯 Modo práctica</button>
     </div>
-    <div class="leyenda">
-      <span>Arriba: regla fija — números en cm, marcas cada 1 mm</span>
-      <span>Abajo: nonio — 20 divisiones</span>
-    </div>
-
-    <div class="fila-respuesta">
-      <div>
-        <label class="campo-label" for="respuesta">Lectura total (mm)</label>
-        <input type="text" id="respuesta" inputmode="decimal" placeholder="ej. 14,35" />
+    <div id="read"></div>
+    <div id="prac">
+      <div>Mide la pieza gris con el calibre y escribe la lectura en milímetros (por ejemplo <code>23,35</code>).</div>
+      <div class="row">
+        <input type="text" id="ans" inputmode="decimal" placeholder="Lectura en mm" autocomplete="off">
+        <button class="pri" id="bCheck">Comprobar</button>
+        <button id="bNext">Nueva pieza</button>
+        <span id="score" class="hint"></span>
       </div>
+      <div id="fb" class="row"></div>
     </div>
+  </div>
 
-    <div class="acciones">
-      <button class="primario" id="btn-verificar">Verificar</button>
-      <button type="button" id="btn-nuevo">Nuevo ejercicio</button>
-    </div>
-
-    <div class="feedback oculto" id="feedback"></div>
-    <div class="desglose oculto" id="desglose"></div>
-  </section>
-
-  <p class="puntaje" id="puntaje">Aciertos: 0 / 0</p>
-
-  <footer class="pie">Simulador de lectura de calibrador · Cap. 1, sección 1.5 · UMSS</footer>
-</div>
+  <div class="card">
+    <b>Cómo leer el nonio de 0,05 mm</b>
+    <ol style="margin:6px 0 0;padding-left:20px">
+      <li>Lee en la escala fija los <b>milímetros enteros</b> que quedan a la izquierda del cero del nonio.</li>
+      <li>Busca la marca del nonio que <b>coincide</b> con una marca de la escala fija.</li>
+      <li>Multiplica esa marca por <b>0,05 mm</b> y súmala. Ejemplo: 23 mm + 7 × 0,05 = <b>23,35 mm</b>.</li>
+    </ol>
+    <div class="hint">El nonio tiene 20 divisiones que ocupan 19 mm, por eso cada marca avanza 0,95 mm y la diferencia con la escala fija es 0,05 mm.</div>
+  </div>
+</main>
 
 <script>
-(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const VBW = 1240, K = 8.5, X0 = 60, DMAX = 100, STEP = 0.05;   // K = píxeles por mm
+const main = $('main');
+main.innerHTML = `
+<defs>
+  <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f4f6f8"/><stop offset=".45" stop-color="#cfd5dc"/><stop offset="1" stop-color="#e6eaee"/>
+  </linearGradient>
+  <linearGradient id="steel2" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#e9edf1"/><stop offset=".5" stop-color="#b9c1ca"/><stop offset="1" stop-color="#dfe4e9"/>
+  </linearGradient>
+  <linearGradient id="blk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a93a0"/><stop offset="1" stop-color="#5d6672"/></linearGradient>
+  <g id="inst"></g>
+</defs>
+<rect x="0" y="0" width="${VBW}" height="380" fill="#fbfcfd"/>
+<use href="#inst"/>`;
 
-  // ---------- Parámetros del instrumento ----------
-  const LC = 0.05;          // precisión: 1/20 mm
-  const N = 20;              // divisiones del nonio
-  const SCALE_PX = 18;       // píxeles por mm en el dibujo
-  const MARGIN_L = 45;
-  const MARGIN_R = 45;
-  const WINDOW_MM = 34;      // ventana visible: margen ampliado para acomodar el rótulo 0.05 mm
+let d = 0, minD = 0, objSize = null, practice = false, showRead = false, drag = null, answered = false, score = { ok: 0, n: 0 };
+const fmt = (v, n = 2) => v.toFixed(n).replace('.', ',');
+const snap = v => Math.round(v / STEP) * STEP;
 
-  const Y_RULE_TOP = 34;     // borde superior de la regla fija
-  const Y_INTERFACE = 96;    // línea de contacto regla / cursor
-  const Y_SLIDER_BOT = 160;  // borde inferior del cursor
-  const HEIGHT = 200;
-
-  let ejercicio = null;   // { msr, i, valorReal, windowStart }
-  let aciertos = 0;
-  let intentos = 0;
-
-  function generarEjercicio(){
-    const cm = Math.floor(Math.random() * 15);         // 0 a 14 cm
-    const windowStart = cm * 10;
-    const resto = Math.floor(Math.random() * 10);      // 0 a 9 mm
-    const msr = windowStart + resto;
-    const i = Math.floor(Math.random() * N);           // 0 a 19 divisiones
-    const valorReal = Math.round((msr + i * LC) * 100) / 100;
-    ejercicio = { msr, i, valorReal, windowStart, cm };
-    return ejercicio;
+function drawInst() {
+  const zx = X0 + d * K;                // posición del cero del nonio
+  let s = '';
+  // ---- regla fija (viga)
+  s += `<rect x="${X0 - 34}" y="80" width="${VBW - X0 + 14}" height="90" fill="url(#steel)" stroke="#6b7480" stroke-width="1.5"/>`;
+  // ---- mordaza fija
+  s += `<path d="M${X0 - 34} 80 V350 L${X0 - 8} 350 L${X0} 330 V170 H${X0 - 34}Z" fill="url(#steel2)" stroke="#6b7480" stroke-width="1.5"/>`;
+  // ---- graduación principal (marcas hacia arriba desde y=170)
+  for (let mm = 0; mm <= 130; mm++) {
+    const x = X0 + mm * K, big = mm % 10 === 0, mid = mm % 5 === 0;
+    s += `<line x1="${x}" y1="170" x2="${x}" y2="${170 - (big ? 26 : mid ? 18 : 11)}" stroke="#111" stroke-width="${big ? 1.6 : 1}"/>`;
+    if (big) s += `<text x="${x}" y="${170 - 32}" text-anchor="middle" font-size="15" font-weight="600" fill="#111">${mm / 10}</text>`;
   }
-
-  function xPos(mm, windowStart){
-    return MARGIN_L + (mm - windowStart) * SCALE_PX;
+  s += `<text x="${X0 + 135 * K}" y="108" font-size="13" fill="#44505e">cm</text><text x="${X0 + 135 * K - 140}" y="108" font-size="13" fill="#44505e">mm</text>`;
+  s += `<line x1="${X0 - 34}" y1="170" x2="${VBW - 6}" y2="170" stroke="#111" stroke-width="1.2"/>`;
+  // ---- objeto a medir
+  if (objSize != null) s += `<rect x="${X0}" y="215" width="${objSize * K}" height="105" fill="url(#blk)" stroke="#3b4452" stroke-width="1.5"/><text x="${X0 + objSize * K / 2}" y="274" text-anchor="middle" font-size="15" fill="#fff" opacity=".85">pieza</text>`;
+  // ---- cursor (nonio) + mordaza móvil
+  s += `<g data-slider="1" style="cursor:ew-resize">`;
+  s += `<path d="M${zx} 170 H${zx + 330} Q${zx + 345} 170 ${zx + 345} 185 V240 Q${zx + 345} 255 ${zx + 330} 255 H${zx + 34} V350 L${zx + 8} 350 L${zx} 330 Z" fill="url(#steel)" stroke="#6b7480" stroke-width="1.5"/>`;
+  s += `<rect x="${zx + 215}" y="196" width="94" height="44" rx="8" fill="#d8dee5" stroke="#8a94a1"/><text x="${zx + 262}" y="224" text-anchor="middle" font-size="13" fill="#44505e">0,05 mm</text>`;
+  // nonio: 20 divisiones = 19 mm -> 0,95 mm por marca
+  for (let i = 0; i <= 20; i++) {
+    const x = zx + i * 0.95 * K, even = i % 2 === 0;
+    s += `<line x1="${x}" y1="170" x2="${x}" y2="${170 + (even ? 24 : 15)}" stroke="#111" stroke-width="${i === 0 ? 2.2 : 1.1}"/>`;
+    if (even) s += `<text x="${x}" y="${170 + 40}" text-anchor="middle" font-size="13" font-weight="600" fill="${i === 0 ? '#b91c1c' : '#111'}">${i / 2}</text>`;
   }
+  s += `</g>`;
+  $('inst').innerHTML = s;
+  // lupa centrada en el cero del nonio
+  $('loupe').setAttribute('viewBox', `${zx - 22} 118 280 150`);
+  $('rng').value = d; $('dLbl').textContent = '';
+  $('dLbl').textContent = practice && !answered ? '' : fmt(d) + ' mm';
+  updateRead();
+}
+function updateRead() {
+  const box = $('read');
+  const visible = showRead && (!practice || answered);
+  box.style.display = visible ? 'block' : 'none';
+  if (!visible) return;
+  const n = Math.round(d / STEP), whole = Math.floor(n / 20 + 1e-9), k = n - whole * 20;
+  box.innerHTML = `Escala fija: <b>${whole} mm</b> &nbsp;+&nbsp; marca del nonio que coincide: <b>${k}</b> × 0,05 = <b>${fmt(k * STEP)} mm</b><br>Lectura: <b>${fmt(whole + k * STEP)} mm</b>`;
+}
+function setD(v) { d = Math.min(DMAX, Math.max(minD, snap(v))); drawInst(); }
 
-  function construirSVG(ej, revelado){
-    const { msr, i, valorReal, windowStart } = ej;
-    const windowEnd = windowStart + WINDOW_MM;
-    const width = MARGIN_L + WINDOW_MM * SCALE_PX + MARGIN_R;
+// ---- arrastre
+function svgX(e) { const r = main.getBoundingClientRect(); return (e.clientX - r.left) * (VBW / r.width); }
+main.addEventListener('pointerdown', e => {
+  if (!e.target.closest('[data-slider]')) return;
+  main.setPointerCapture(e.pointerId); drag = { off: svgX(e) - (X0 + d * K) }; e.preventDefault();
+});
+main.addEventListener('pointermove', e => { if (drag) setD((svgX(e) - drag.off - X0) / K); });
+main.addEventListener('pointerup', () => drag = null);
+main.addEventListener('pointercancel', () => drag = null);
+$('rng').addEventListener('input', e => setD(+e.target.value));
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+  const st = e.shiftKey ? 1 : STEP;
+  if (e.key === 'ArrowRight') { setD(d + st); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { setD(d - st); e.preventDefault(); }
+});
 
-    let partes = [];
-    partes.push(`<svg viewBox="0 0 ${width} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg" font-family="'JetBrains Mono', monospace">`);
-
-    // Cuerpo de la regla fija
-    partes.push(`<rect x="0" y="${Y_RULE_TOP}" width="${width}" height="${Y_INTERFACE - Y_RULE_TOP}" fill="#D9DEDA" stroke="#8C948E" stroke-width="1"/>`);
-
-    // Cursor deslizante con espacio adicional a la derecha para el texto
-    const xSliderIni = xPos(valorReal, windowStart) - 14;
-    const xSliderFin = xPos(valorReal + (N - 1), windowStart) + 38;
-    partes.push(`<rect x="${xSliderIni.toFixed(1)}" y="${Y_INTERFACE}" width="${(xSliderFin - xSliderIni).toFixed(1)}" height="${Y_SLIDER_BOT - Y_INTERFACE}" fill="#C3CAC5" stroke="#8C948E" stroke-width="1"/>`);
-
-    // Escala principal (regla fija)
-    for (let v = Math.ceil(windowStart); v <= windowEnd; v++){
-      const xp = xPos(v, windowStart);
-      const largo = (v % 10 === 0) ? 26 : ((v % 5 === 0) ? 20 : 13);
-      const esCoincidencia = revelado && v === msr + i;
-      const color = esCoincidencia ? '#1B8F5A' : '#25302A';
-      const grosor = esCoincidencia ? 2.6 : 1.1;
-      partes.push(`<line x1="${xp.toFixed(1)}" y1="${Y_INTERFACE}" x2="${xp.toFixed(1)}" y2="${Y_INTERFACE - largo}" stroke="${color}" stroke-width="${grosor}"/>`);
-      if (v % 10 === 0){
-        partes.push(`<text x="${xp.toFixed(1)}" y="${Y_INTERFACE - largo - 6}" font-size="13" font-weight="bold" fill="#1A211D" text-anchor="middle">${v / 10}</text>`);
-      }
-    }
-
-    // Rótulo de unidades de la regla fija
-    partes.push(`<text x="${width - 12}" y="${Y_RULE_TOP + 18}" font-size="13" font-weight="bold" fill="#1A211D" text-anchor="end">cm</text>`);
-
-    // Línea de contacto entre regla y cursor
-    partes.push(`<line x1="0" y1="${Y_INTERFACE}" x2="${width}" y2="${Y_INTERFACE}" stroke="#6E7772" stroke-width="1.2"/>`);
-
-    // Escala del nonio (20 divisiones en 19 mm)
-    for (let k = 0; k <= N; k++){
-      const mmPos = valorReal + k * (N - 1) / N;
-      const xp = xPos(mmPos, windowStart);
-      const largo = (k % 5 === 0) ? 20 : 13;
-      const esCoincidencia = revelado && k === i;
-      const color = esCoincidencia ? '#1B8F5A' : '#25302A';
-      const grosor = esCoincidencia ? 2.6 : 1.1;
-      partes.push(`<line x1="${xp.toFixed(1)}" y1="${Y_INTERFACE}" x2="${xp.toFixed(1)}" y2="${Y_INTERFACE + largo}" stroke="${color}" stroke-width="${grosor}"/>`);
-      if (k % 5 === 0){
-        partes.push(`<text x="${xp.toFixed(1)}" y="${Y_INTERFACE + largo + 13}" font-size="11" fill="#1A211D" text-anchor="middle">${k}</text>`);
-      }
-    }
-
-    // Rótulo de resolución en la esquina inferior derecha del cursor
-    partes.push(`<text x="${(xSliderFin - 6).toFixed(1)}" y="${Y_SLIDER_BOT - 6}" font-size="10" font-weight="600" fill="#25302A" text-anchor="end">0.05 mm</text>`);
-
-    partes.push('</svg>');
-    return partes.join('');
-  }
-
-  function renderizar(revelado){
-    document.getElementById('svg-container').innerHTML = construirSVG(ejercicio, revelado);
-  }
-
-  // ---------- Interacción ----------
-  const inputRespuesta = document.getElementById('respuesta');
-  const btnVerificar = document.getElementById('btn-verificar');
-  const btnNuevo = document.getElementById('btn-nuevo');
-  const feedback = document.getElementById('feedback');
-  const desglose = document.getElementById('desglose');
-  const puntajeEl = document.getElementById('puntaje');
-
-  function nuevoEjercicio(){
-    generarEjercicio();
-    renderizar(false);
-    inputRespuesta.value = '';
-    feedback.classList.add('oculto');
-    desglose.classList.add('oculto');
-    inputRespuesta.focus();
-  }
-
-  function verificar(){
-    const raw = inputRespuesta.value.trim().replace(',', '.');
-    const val = Number(raw);
-    if (raw === '' || Number.isNaN(val)){
-      feedback.textContent = 'Ingrese una lectura numérica válida.';
-      feedback.className = 'feedback incorrecto';
-      return;
-    }
-
-    intentos++;
-    const correcto = Math.abs(val - ejercicio.valorReal) < 0.001;
-    if (correcto) aciertos++;
-
-    feedback.textContent = correcto
-      ? `Correcto: ${ejercicio.valorReal.toFixed(2)} mm`
-      : `Incorrecto. La lectura correcta es ${ejercicio.valorReal.toFixed(2)} mm`;
-    feedback.className = 'feedback ' + (correcto ? 'correcto' : 'incorrecto');
-
-    desglose.innerHTML =
-      `Escala principal (donde se ubica el cero del nonio): <span class="valor">${ejercicio.msr} mm</span><br>` +
-      `División del nonio que coincide con una marca de la escala principal: <span class="marcador-nonio">${ejercicio.i}</span> × 0,05 mm = <span class="valor">${(ejercicio.i * LC).toFixed(2)} mm</span><br>` +
-      `Lectura total = ${ejercicio.msr} + ${(ejercicio.i * LC).toFixed(2)} = <span class="valor">${ejercicio.valorReal.toFixed(2)} mm</span>`;
-    desglose.classList.remove('oculto');
-
-    puntajeEl.textContent = `Aciertos: ${aciertos} / ${intentos}`;
-    renderizar(true);
-  }
-
-  btnVerificar.addEventListener('click', verificar);
-  btnNuevo.addEventListener('click', nuevoEjercicio);
-  inputRespuesta.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter'){
-      e.preventDefault();
-      verificar();
-    }
-  });
-
-  nuevoEjercicio();
-})();
+// ---- botones
+$('bLoupe').onclick = e => { const on = $('loupeWrap').style.display !== 'block'; $('loupeWrap').style.display = on ? 'block' : 'none'; e.currentTarget.classList.toggle('on', on); };
+$('bShow').onclick = e => { showRead = !showRead; e.currentTarget.classList.toggle('on', showRead); updateRead(); };
+$('bPrac').onclick = e => {
+  practice = !practice; e.currentTarget.classList.toggle('on', practice);
+  $('prac').style.display = practice ? 'block' : 'none';
+  if (practice) newPiece(); else { objSize = null; minD = 0; answered = false; drawInst(); }
+};
+function newPiece() {
+  objSize = Math.round((5 + Math.random() * 80) / STEP) * STEP; minD = objSize; answered = false;
+  $('ans').value = ''; $('fb').textContent = ''; $('fb').style.color = '';
+  d = Math.min(DMAX, objSize + 10 + Math.random() * 10); d = snap(d); drawInst(); $('ans').focus();
+}
+$('bNext').onclick = newPiece;
+function check() {
+  const txt = $('ans').value.trim().replace(',', '.'); const v = parseFloat(txt);
+  if (!isFinite(v)) { $('fb').textContent = 'Escribe un número, por ejemplo 23,35'; $('fb').style.color = 'var(--bad)'; return; }
+  const real = snap(d); score.n++; answered = true;
+  if (Math.abs(v - real) < STEP / 2 + 1e-6) { score.ok++; $('fb').textContent = '✔ ¡Correcto! La lectura es ' + fmt(real) + ' mm'; $('fb').style.color = 'var(--ok)'; }
+  else { $('fb').textContent = '✘ Casi. La lectura correcta es ' + fmt(real) + ' mm (tú pusiste ' + fmt(v) + ')'; $('fb').style.color = 'var(--bad)'; }
+  $('score').textContent = 'Aciertos: ' + score.ok + ' / ' + score.n;
+  drawInst();
+}
+$('bCheck').onclick = check;
+$('ans').addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+setD(23.35);
 </script>
-
 </body>
 </html>
