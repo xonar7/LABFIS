@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuitos AC en serie · Calculadora fasorial didáctica</title>
+<meta name="description" content="Calculadora didáctica de circuitos de corriente alterna en serie (R, L, C) con análisis fasorial, diagrama fasorial, formas de onda y puntos de verificación. Valores eficaces.">
+<style>
+/* =====================================================================
+   1. TEMAS (variables CSS). Oscuro por defecto; el claro se activa con
+      data-theme="light" en <html>.
+   ===================================================================== */
+:root, [data-theme="dark"] {
+  --bg:#0D1117; --card:#161B22; --card2:#1C2128; --fg:#E6EDF3; --muted:#8B949E;
+  --grid:#30363D; --accent:#58A6FF; --accent-bg:#1C2B4A;
+  --cyan:#58A6FF; --green:#3FB950; --red:#FF7B72; --yellow:#E3B341;
+  --purple:#BC8CFF; --orange:#F0883E; --errbg:#3B1C1C;
+}
+[data-theme="light"] {
+  --bg:#FFFFFF; --card:#F6F8FA; --card2:#EEF1F5; --fg:#1F2328; --muted:#57606A;
+  --grid:#D0D7DE; --accent:#1F4788; --accent-bg:#DCE7F7;
+  --cyan:#0969DA; --green:#1A7F37; --red:#CF222E; --yellow:#9A6700;
+  --purple:#8250DF; --orange:#BC4C00; --errbg:#FFEBE9;
+}
+
+/* =====================================================================
+   2. ESTRUCTURA GENERAL
+   ===================================================================== */
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+.wrap { max-width:1180px; margin:0 auto; padding:0 16px 40px; }
+header { border-bottom:1px solid var(--grid); background:var(--card); }
+header .wrap { display:flex; gap:16px; align-items:center; justify-content:space-between; padding:14px 16px; flex-wrap:wrap; }
+h1 { font-size:1.35rem; margin:0; color:var(--accent); }
+header p { margin:2px 0 0; color:var(--muted); font-size:.9rem; }
+h2 { font-size:1.1rem; margin:0 0 12px; color:var(--accent); }
+h3 { font-size:1rem; margin:14px 0 6px; }
+.card { background:var(--card); border:1px solid var(--grid); border-radius:10px; padding:16px; margin-top:16px; }
+.grid2 { display:grid; grid-template-columns:minmax(320px,400px) 1fr; gap:16px; align-items:start; }
+.grid2.two { grid-template-columns:1fr 1fr; }
+@media (max-width:860px) { .grid2, .grid2.two { grid-template-columns:1fr; } }
+.grid2 > .card { margin-top:16px; }
+.muted { color:var(--muted); }
+.small { font-size:.85rem; }
+
+/* =====================================================================
+   3. FORMULARIOS Y BOTONES
+   ===================================================================== */
+label { display:block; font-size:.85rem; color:var(--muted); margin:10px 0 3px; }
+.row { display:flex; gap:6px; align-items:center; }
+input[type=text], select { background:var(--bg); color:var(--fg); border:1px solid var(--grid);
+  border-radius:6px; padding:7px 9px; font:inherit; min-width:0; }
+input[type=text] { flex:1; width:100%; }
+input:focus, select:focus, button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+input[type=range] { width:100%; accent-color:var(--accent); }
+button { background:var(--card2); color:var(--fg); border:1px solid var(--grid); border-radius:6px;
+  padding:7px 12px; font:inherit; cursor:pointer; }
+button:hover { border-color:var(--accent); }
+button.primary { background:var(--accent-bg); color:var(--accent); border-color:var(--accent); }
+button.icon { padding:6px 9px; }
+.el-row { display:grid; grid-template-columns:34px 1fr 78px 34px; gap:6px; align-items:center; margin-top:6px; }
+.badge { display:inline-flex; width:34px; height:34px; align-items:center; justify-content:center;
+  border-radius:6px; font-weight:700; border:2px solid; }
+.b-R { color:var(--green); border-color:var(--green); }
+.b-L { color:var(--red); border-color:var(--red); }
+.b-C { color:var(--purple); border-color:var(--purple); }
+.err { background:var(--errbg); border-left:4px solid var(--red); padding:10px 12px; border-radius:6px; margin-top:12px; }
+
+/* =====================================================================
+   4. RESULTADOS: tarjetas resumen, ecuaciones, pasos, verificaciones
+   ===================================================================== */
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+.tile { background:var(--card2); border:1px solid var(--grid); border-radius:8px; padding:10px 12px; }
+.tile .k { font-size:.78rem; color:var(--muted); }
+.tile .v { font-size:1.05rem; font-weight:600; margin-top:2px; }
+.eq { background:var(--card2); border-left:4px solid var(--accent); border-radius:6px; padding:10px 14px;
+  margin:8px 0; overflow-x:auto; line-height:1.9; }
+.step { border-top:1px solid var(--grid); padding-top:6px; margin-top:12px; }
+.step h3 { color:var(--fg); font-size:1.02rem; }
+.step h3 .n { display:inline-flex; width:26px; height:26px; border-radius:50%; background:var(--accent-bg);
+  color:var(--accent); align-items:center; justify-content:center; margin-right:8px; font-size:.9rem; }
+details.check { background:var(--card2); border-left:4px solid var(--green); border-radius:6px; padding:8px 12px; margin:10px 0; }
+details.check summary { cursor:pointer; color:var(--green); font-weight:600; }
+details.check .ans { margin-top:6px; }
+.k-u{color:var(--cyan)} .k-r{color:var(--green)} .k-l{color:var(--red)} .k-c{color:var(--purple)}
+.k-i{color:var(--yellow)} .k-o{color:var(--orange)} .b{font-weight:700}
+.ph { font-style:normal; }
+
+/* =====================================================================
+   5. GRÁFICOS SVG (usan las variables de tema)
+   ===================================================================== */
+svg { max-width:100%; height:auto; display:block; margin:0 auto; overflow:visible; }
+svg text { fill:var(--fg); font-family:inherit; }
+svg text.m { fill:var(--muted); }
+svg text.h { paint-order:stroke; stroke:var(--card); stroke-width:4px; stroke-linejoin:round; }
+.w   { stroke:var(--fg); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.cR  { stroke:var(--green); fill:none; stroke-width:2.4; stroke-linejoin:round; }
+.cL  { stroke:var(--red); fill:none; stroke-width:2.4; }
+.cC  { stroke:var(--purple); fill:none; stroke-width:3; }
+.src { stroke:var(--cyan); fill:none; stroke-width:2.4; }
+.axis{ stroke:var(--muted); stroke-width:1.2; fill:none; }
+.gl  { stroke:var(--grid); stroke-width:1; fill:none; }
+.fU  { stroke:var(--cyan); fill:none; stroke-width:3; }
+.fI  { stroke:var(--yellow); fill:none; stroke-width:2.6; }
+.fIdash { stroke:var(--yellow); fill:none; stroke-width:2.4; stroke-dasharray:6 4; }
+.fZ  { stroke:var(--cyan); fill:none; stroke-width:3; }
+.dot { stroke:var(--muted); stroke-width:1.2; stroke-dasharray:3 3; fill:none; }
+.fR  { stroke:var(--green); fill:none; stroke-width:3; }
+.fL  { stroke:var(--red); fill:none; stroke-width:3; }
+.fC  { stroke:var(--purple); fill:none; stroke-width:3; }
+.fO  { stroke:var(--orange); fill:none; stroke-width:2.2; }
+footer { color:var(--muted); font-size:.85rem; margin-top:24px; }
+details.scope summary { cursor:pointer; color:var(--accent); }
+
+/* Impresión: siempre en claro y sin controles */
+@media print {
+  :root, [data-theme="dark"] { --bg:#fff; --card:#fff; --card2:#f3f4f6; --fg:#111; --muted:#555; --grid:#ccc; --accent:#1F4788; --accent-bg:#e3ebf7; }
+  header button, .controls, #addBtns, .el-row button { display:none !important; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1>Circuitos AC en serie · Análisis fasorial</h1>
+      <p>Calculadora didáctica R-L-C · régimen permanente senoidal · valores eficaces</p>
+    </div>
+    <div class="row">
+      <button id="copyLink" title="Copia un enlace con el circuito actual">🔗 Copiar enlace</button>
+      <button id="themeBtn" title="Cambiar tema claro/oscuro">☀ Claro</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============================ ENTRADAS ============================ -->
+  <div class="grid2">
+    <section class="card controls" id="inputs">
+      <h2>Datos del circuito</h2>
+
+      <label for="preset">Cargar un ejemplo</label>
+      <select id="preset">
+        <option value="">— elegir —</option>
+        <option value="ej1">Ejemplo 1: R-L-C (1 Ω, 1 mH, 1000 µF, 100 Hz, 16 V)</option>
+        <option value="ej2">Ejemplo 2: R-C (9990 Ω, 467 nF, 50 Hz, 9,2 V)</option>
+        <option value="rl">Ejercicio A: R-L (100 Ω, 100 mH, 50 Hz, 12 V)</option>
+        <option value="rlc">Ejercicio B: R-L-C (47 Ω, 50 mH, 100 µF, 60 Hz, 24 V)</option>
+        <option value="res">Resonancia: R-L-C a f₀ (Ejemplo 1 en 159,15 Hz)</option>
+      </select>
+
+      <label for="Uv">Tensión de la fuente (valor eficaz)</label>
+      <div class="row"><input type="text" id="Uv" inputmode="decimal" autocomplete="off">
+        <select id="Uu"></select></div>
+
+      <label for="th">Ángulo de la fuente θ (grados; 0° = referencia)</label>
+      <div class="row"><input type="text" id="th" inputmode="decimal" autocomplete="off"></div>
+
+      <label for="fv">Frecuencia</label>
+      <div class="row"><input type="text" id="fv" inputmode="decimal" autocomplete="off">
+        <select id="fu"></select></div>
+      <input type="range" id="fslider" min="0" max="800" step="1" aria-label="Frecuencia (escala logarítmica de 0,1 Hz a 10 MHz)">
+      <div class="small muted">Deslice para ver cómo cambia el circuito con la frecuencia (0,1 Hz – 10 MHz, escala log).</div>
+
+      <h3>Elementos en serie</h3>
+      <div id="elList"></div>
+      <div class="row" id="addBtns" style="margin-top:10px; flex-wrap:wrap">
+        <button data-add="R">+ Resistor</button>
+        <button data-add="L">+ Inductor</button>
+        <button data-add="C">+ Capacitor</button>
+      </div>
+      <div id="errBox" role="alert"></div>
+    </section>
+
+    <section class="card" id="circuitCard">
+      <h2>Circuito</h2>
+      <div id="circuitSvg"></div>
+      <div id="tiles" class="tiles" style="margin-top:14px"></div>
+    </section>
+  </div>
+
+  <!-- ============================ GRÁFICOS ============================ -->
+  <div class="grid2 two">
+    <section class="card"><h2>Diagrama fasorial</h2><div id="phasorSvg"></div><p class="small muted" id="phasorCap"></p></section>
+    <section class="card"><h2>Triángulo de impedancia</h2><div id="zSvg"></div><p class="small muted" id="zCap"></p></section>
+  </div>
+
+  <section class="card"><h2>Señales en el tiempo</h2><div id="waveSvg"></div><p class="small muted" id="waveCap"></p></section>
+
+  <!-- ============================ PASOS ============================ -->
+  <section class="card" id="stepsCard">
+    <h2>Resolución paso a paso</h2>
+    <p class="small muted">Los cálculos usan doble precisión. Reactancias, impedancias, tensiones, corrientes y ángulos se muestran con dos decimales.</p>
+    <div id="steps"></div>
+  </section>
+
+
+  <footer>
+    <details class="scope"><summary>Alcance y limitaciones</summary>
+      <ul>
+        <li>Solo <b>régimen permanente senoidal</b> a <b>una</b> frecuencia (no hay transitorios ni señales no senoidales).</li>
+        <li>Solo circuitos <b>en serie</b> con elementos <b>ideales y lineales</b> (R, L, C). Los efectos parásitos se pueden modelar agregando un resistor en serie.</li>
+        <li>Fuente ideal (sin impedancia interna). Todos los módulos son <b>valores eficaces</b>.</li>
+        <li>En el diagrama fasorial la corriente se dibuja a escala arbitraria (sus unidades difieren de las de la tensión).</li>
+      </ul>
+    </details>
+    <p id="selftest"></p>
+  </footer>
+</main>
+
+<script>
+'use strict';
+/* =====================================================================
+   A. MOTOR DE CÁLCULO (sin acceso al DOM: se puede probar de forma aislada)
+   ===================================================================== */
+/* ENGINE-START */
+
+// --- A.1 Símbolos fasoriales (punto sobre U e I, circunflejo sobre Z) ---
+const SU = 'U̇', SI = 'İ', SZ = 'Ẑ';
+
+// --- A.2 Aritmética compleja mínima: números como {re, im} ---
+const C = (re, im = 0) => ({ re, im });
+const add = (a, b) => C(a.re + b.re, a.im + b.im);
+const mul = (a, b) => C(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+const div = (a, b) => { const d = b.re * b.re + b.im * b.im;
+  return C((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d); };
+const mag = (a) => Math.hypot(a.re, a.im);
+const deg = (r) => r * 180 / Math.PI;
+const rad = (d) => d * Math.PI / 180;
+const argDeg = (a) => { const d = deg(Math.atan2(a.im, a.re)); return Math.abs(d) < 1e-9 ? 0 : d; };
+const fromPolar = (m, ang) => C(m * Math.cos(rad(ang)), m * Math.sin(rad(ang)));
+// Normaliza un ángulo al intervalo (-180, 180]
+const normAng = (a) => { let x = ((a + 180) % 360 + 360) % 360 - 180; return x === -180 ? 180 : x; };
+
+// --- A.3 Prefijos de unidades (factor para pasar a unidades SI) ---
+const UNITS = {
+  R: { 'mΩ': 1e-3, 'Ω': 1, 'kΩ': 1e3, 'MΩ': 1e6 },
+  L: { 'nH': 1e-9, 'µH': 1e-6, 'mH': 1e-3, 'H': 1 },
+  C: { 'pF': 1e-12, 'nF': 1e-9, 'µF': 1e-6, 'mF': 1e-3, 'F': 1 },
+  F: { 'Hz': 1, 'kHz': 1e3, 'MHz': 1e6 },
+  V: { 'mV': 1e-3, 'V': 1, 'kV': 1e3 },
+};
+const DEFAULT_UNIT = { R: 'Ω', L: 'mH', C: 'µF' };
+
+// --- A.4 Formato numérico (coma decimal, cifras significativas) ---
+function fmt(x, sig = 5) {
+  if (!isFinite(x)) return '∞';
+  if (x === 0) return '0';
+  const a = Math.abs(x);
+  if (a >= 1e-3 && a < 1e7) {
+    const dec = Math.max(0, sig - 1 - Math.floor(Math.log10(a)));
+    const s = parseFloat(x.toFixed(Math.min(dec, 12))).toString();
+    return s.replace('-', '−').replace('.', ',');
+  }
+  // fuera de rango "cómodo": notación científica con superíndice HTML
+  const e = Math.floor(Math.log10(a));
+  const m = x / Math.pow(10, e);
+  return fmt(m, Math.min(sig, 4)) + '×10<sup>' + e + '</sup>';
+}
+// Versión de texto plano (para SVG): sin etiquetas HTML
+const fmtP = (x, sig = 5) => fmt(x, sig).replace(/×10<sup>(-?\d+)<\/sup>/, 'e$1');
+// Ángulos: texto plano (sin HTML) para poder usarlos dentro de SVG; |ángulo| < 0,001° se muestra como 0°
+// --- Dos decimales (coma decimal) para reactancias, impedancias, tensiones, corrientes y ángulos ---
+const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2).replace('-', '−').replace('.', ',');   // evita "−0,00"
+const fmtAng = (a) => f2(a) + '°';
+// Prefijo SI elegido por magnitud (con acarreo: 999,996 -> 1,00 k)
+const SIPFX = ['p', 'n', 'µ', 'm', '', 'k', 'M', 'G'];
+function pfxIdx(x) {
+  if (x === 0 || !isFinite(x)) return 4;
+  let i = Math.max(0, Math.min(7, Math.floor(Math.log10(Math.abs(x)) / 3) + 4));
+  if (Math.abs(Number((x / Math.pow(10, (i - 4) * 3)).toFixed(2))) >= 1000 && i < 7) i++;
+  return i;
+}
+// Tensiones y corrientes: valor con prefijo SI y dos decimales, p. ej. 760,72 µA
+const eng2 = (x, unit) => { const i = pfxIdx(x); return f2(x / Math.pow(10, (i - 4) * 3)) + ' ' + SIPFX[i] + unit; };
+// Fasores en V o A: forma polar y rectangular con un único prefijo
+const polarU = (m, a, unit) => eng2(m, unit) + ' ∠ ' + fmtAng(a);
+function rectU(z, unit) {
+  const i = pfxIdx(Math.max(Math.abs(z.re), Math.abs(z.im))), k = Math.pow(10, (i - 4) * 3);
+  return f2(z.re / k) + (z.im < 0 ? ' − j' : ' + j') + f2(Math.abs(z.im) / k) + ' ' + SIPFX[i] + unit;
+}
+// Notación de ingeniería con prefijo SI: eng(0.00076,'A') -> "760,7 µA"
+function eng(x, unit, sig = 4) {
+  if (x === 0 || !isFinite(x)) return fmtP(x) + ' ' + unit;
+  const P = ['p', 'n', 'µ', 'm', '', 'k', 'M', 'G'];
+  let i = Math.floor(Math.log10(Math.abs(x)) / 3) + 4;
+  i = Math.max(0, Math.min(P.length - 1, i));
+  const m = x / Math.pow(10, (i - 4) * 3);
+  return fmtP(m, sig) + ' ' + P[i] + unit;
+}
+const rect = (z) => f2(z.re) + (z.im < 0 ? ' − j' : ' + j') + f2(Math.abs(z.im));          // impedancias (Ω)
+const polar = (m, a) => f2(m) + ' ∠ ' + fmtAng(a);                                         // impedancias (Ω)
+
+// --- A.5 Resolución del circuito serie ---
+// P = { U (V ef), theta (°), f (Hz), els: [{type:'R'|'L'|'C', val (SI)}] }
+function solve(P) {
+  const w = 2 * Math.PI * P.f;                       // pulsación ω = 2πf
+  const cnt = { R: 0, L: 0, C: 0 }, seen = { R: 0, L: 0, C: 0 };
+  P.els.forEach(e => cnt[e.type]++);
+
+  // Paso 1: impedancia de cada elemento
+  const items = P.els.map((e, k) => {
+    seen[e.type]++;
+    const idx = cnt[e.type] > 1 ? String(seen[e.type]) : '';
+    let X = 0, Z;
+    if (e.type === 'R') Z = C(e.val, 0);                       // R ∠ 0°
+    else if (e.type === 'L') { X = w * e.val; Z = C(0, X); }   // +jXL
+    else { X = 1 / (w * e.val); Z = C(0, -X); }                // −jXC
+    return { type: e.type, val: e.val, idx, label: e.type + idx, X, Z, pos: k };
+  });
+
+  // Paso 2: impedancia total (suma, por ser serie)
+  const Zt = items.reduce((s, it) => add(s, it.Z), C(0, 0));
+  const Rt = items.filter(i => i.type === 'R').reduce((s, i) => s + i.val, 0);
+  const XLt = items.filter(i => i.type === 'L').reduce((s, i) => s + i.X, 0);
+  const XCt = items.filter(i => i.type === 'C').reduce((s, i) => s + i.X, 0);
+  const Lt = items.filter(i => i.type === 'L').reduce((s, i) => s + i.val, 0);
+  const invC = items.filter(i => i.type === 'C').reduce((s, i) => s + 1 / i.val, 0); // 1/Ceq
+  const Zmag = mag(Zt);
+  if (Zmag <= 1e-9 * Math.max(XLt, XCt, Rt, 1e-300) || Zmag === 0)
+    return { error: 'Impedancia total nula (resonancia sin resistencia): la corriente queda indeterminada. Agregue un resistor.' };
+  const phi = argDeg(Zt);                                   // ángulo de Ẑ
+
+  // Paso 3: corriente  İ = U̇ / Ẑ
+  const Uph = fromPolar(P.U, P.theta);
+  const I = div(Uph, Zt);
+
+  // Paso 4: tensión en cada elemento  U̇k = Ẑk · İ
+  items.forEach(it => { it.U = mul(it.Z, I); });
+
+  // Paso 5: comprobación de Kirchhoff y datos derivados
+  const sum = items.reduce((s, it) => add(s, it.U), C(0, 0));
+  const kirErr = mag(add(sum, C(-Uph.re, -Uph.im))) / P.U;
+  const net = XLt - XCt;
+  const resistive = Math.abs(phi) < 0.005;               // |φ| < 0,005° ⇒ se considera resonancia / resistivo
+  const kind = resistive ? 'resistivo' : (net > 0 ? 'inductivo' : 'capacitivo');
+  const f0 = (Lt > 0 && invC > 0) ? 1 / (2 * Math.PI * Math.sqrt(Lt / invC)) : null;
+  const order = { R: 0, L: 1, C: 2 };
+  const ordered = items.slice().sort((a, b) => order[a.type] - order[b.type] || a.pos - b.pos);
+
+  return { P, w, items, ordered, Zt, Rt, XLt, XCt, Lt, invC, net, Zmag, phi, Uph, I,
+           Imag: mag(I), Iang: argDeg(I), sum, kirErr, kind, resistive,
+           fp: Math.cos(rad(phi)), f0 };
+}
+/* ENGINE-END */
+
+/* =====================================================================
+   B. ESTADO DE LA INTERFAZ
+   ===================================================================== */
+const PRESETS = {
+  ej1: { U: ['16', 'V'], th: '0', f: ['100', 'Hz'], els: [['R', '1', 'Ω'], ['L', '1', 'mH'], ['C', '1000', 'µF']] },
+  ej2: { U: ['9,2', 'V'], th: '0', f: ['50', 'Hz'], els: [['R', '9990', 'Ω'], ['C', '467', 'nF']] },
+  rl:  { U: ['12', 'V'], th: '0', f: ['50', 'Hz'], els: [['R', '100', 'Ω'], ['L', '100', 'mH']] },
+  rlc: { U: ['24', 'V'], th: '0', f: ['60', 'Hz'], els: [['R', '47', 'Ω'], ['L', '50', 'mH'], ['C', '100', 'µF']] },
+  res: { U: ['16', 'V'], th: '0', f: ['159,155', 'Hz'], els: [['R', '1', 'Ω'], ['L', '1', 'mH'], ['C', '1000', 'µF']] },
+};
+let uid = 0;
+const state = { U: ['16', 'V'], th: '0', f: ['100', 'Hz'], els: [] };
+const $ = (id) => document.getElementById(id);
+
+function loadPreset(key) {
+  const p = PRESETS[key]; if (!p) return;
+  state.U = p.U.slice(); state.th = p.th; state.f = p.f.slice();
+  state.els = p.els.map(([type, v, u]) => ({ id: ++uid, type, v, u }));
+}
+
+/* ---- B.1 Lectura y validación de los campos ---- */
+const parseNum = (s) => { const t = String(s).trim().replace(',', '.'); return t === '' ? NaN : Number(t); };
+function readParams() {
+  const errs = [];
+  const U = parseNum(state.U[0]), th = parseNum(state.th), f = parseNum(state.f[0]);
+  if (!(U > 0)) errs.push('La tensión debe ser un número mayor que 0.');
+  if (isNaN(th)) errs.push('El ángulo de la fuente debe ser un número (puede ser 0).');
+  if (!(f > 0)) errs.push('La frecuencia debe ser un número mayor que 0.');
+  const els = state.els.map((e, k) => {
+    const v = parseNum(e.v);
+    if (!(v > 0)) errs.push(`El elemento ${k + 1} (${e.type}) necesita un valor mayor que 0.`);
+    return { type: e.type, val: v * UNITS[e.type][e.u] };
+  });
+  if (els.length === 0) errs.push('Agregue al menos un elemento.');
+  if (errs.length) return { errs };
+  return { errs, P: { U: U * UNITS.V[state.U[1]], theta: th, f: f * UNITS.F[state.f[1]], els } };
+}
+
+/* =====================================================================
+   C. ENTRADAS: construcción de la lista de elementos y eventos
+   ===================================================================== */
+function fillSelect(sel, obj, value) {
+  sel.innerHTML = Object.keys(obj).map(k => `<option${k === value ? ' selected' : ''}>${k}</option>`).join('');
+}
+function renderInputs() {
+  $('Uv').value = state.U[0]; fillSelect($('Uu'), UNITS.V, state.U[1]);
+  $('th').value = state.th;
+  $('fv').value = state.f[0]; fillSelect($('fu'), UNITS.F, state.f[1]);
+  syncSlider();
+  // Lista de elementos (se reconstruye solo al agregar/quitar/cargar)
+  const box = $('elList'); box.innerHTML = '';
+  state.els.forEach((e) => {
+    const row = document.createElement('div'); row.className = 'el-row';
+    row.innerHTML = `<span class="badge b-${e.type}">${e.type}</span>
+      <input type="text" inputmode="decimal" value="${e.v}" aria-label="Valor de ${e.type}">
+      <select aria-label="Unidad"></select>
+      <button class="icon" title="Quitar" aria-label="Quitar elemento">✕</button>`;
+    const [inp, sel, del] = [row.querySelector('input'), row.querySelector('select'), row.querySelector('button')];
+    fillSelect(sel, UNITS[e.type], e.u);
+    inp.addEventListener('input', () => { e.v = inp.value; update(); });
+    sel.addEventListener('change', () => { e.u = sel.value; update(); });
+    del.addEventListener('click', () => { state.els = state.els.filter(x => x !== e); renderInputs(); update(); });
+    box.appendChild(row);
+  });
+}
+// --- Deslizador logarítmico de frecuencia: 0,1 Hz (0) … 10 MHz (800) ---
+function syncSlider() {
+  const f = parseNum(state.f[0]) * UNITS.F[state.f[1]];
+  $('fslider').value = f > 0 ? Math.max(0, Math.min(800, Math.round((Math.log10(f) + 1) * 100))) : 0;
+}
+function bindInputs() {
+  $('Uv').addEventListener('input', e => { state.U[0] = e.target.value; update(); });
+  $('Uu').addEventListener('change', e => { state.U[1] = e.target.value; update(); });
+  $('th').addEventListener('input', e => { state.th = e.target.value; update(); });
+  $('fv').addEventListener('input', e => { state.f[0] = e.target.value; syncSlider(); update(); });
+  $('fu').addEventListener('change', e => { state.f[1] = e.target.value; syncSlider(); update(); });
+  $('fslider').addEventListener('input', e => {
+    const f = Math.pow(10, -1 + Number(e.target.value) / 100);          // Hz
+    const u = f >= 1e6 ? 'MHz' : f >= 1e3 ? 'kHz' : 'Hz';               // unidad cómoda
+    state.f = [fmtP(f / UNITS.F[u], 4), u];
+    $('fv').value = state.f[0]; fillSelect($('fu'), UNITS.F, u); update();
+  });
+  document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => {
+    const t = b.dataset.add;
+    state.els.push({ id: ++uid, type: t, v: '1', u: DEFAULT_UNIT[t] });
+    renderInputs(); update();
+  }));
+  $('preset').addEventListener('change', e => { loadPreset(e.target.value); renderInputs(); update(); e.target.value = ''; });
+  $('themeBtn').addEventListener('click', toggleTheme);
+  $('copyLink').addEventListener('click', copyLink);
+}
+
+/* =====================================================================
+   D. TEMA Y ENLACE COMPARTIBLE
+   ===================================================================== */
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  $('themeBtn').textContent = t === 'dark' ? '☀ Claro' : '☾ Oscuro';
+  try { localStorage.setItem('acserie-theme', t); } catch (e) { /* almacenamiento no disponible */ }
+}
+function toggleTheme() { setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+// El estado del circuito viaja en el hash de la URL (#c=...) para compartir ejemplos
+function saveHash() {
+  try {
+    const s = { U: state.U, th: state.th, f: state.f, els: state.els.map(e => [e.type, e.v, e.u]) };
+    history.replaceState(null, '', '#c=' + encodeURIComponent(JSON.stringify(s)));
+  } catch (e) { /* algunos entornos (file://) restringen replaceState */ }
+}
+function loadHash() {
+  try {
+    const m = location.hash.match(/^#c=(.+)$/); if (!m) return false;
+    const s = JSON.parse(decodeURIComponent(m[1]));
+    if (!Array.isArray(s.els) || !s.els.length) return false;
+    state.U = s.U; state.th = s.th; state.f = s.f;
+    state.els = s.els.filter(x => UNITS[x[0]] && UNITS[x[0]][x[2]]).map(([type, v, u]) => ({ id: ++uid, type, v: String(v), u }));
+    return state.els.length > 0;
+  } catch (e) { return false; }
+}
+function copyLink() {
+  saveHash();
+  const done = () => { $('copyLink').textContent = '✔ Enlace copiado'; setTimeout(() => $('copyLink').textContent = '🔗 Copiar enlace', 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(location.href).then(done, () => prompt('Copie el enlace:', location.href));
+  else prompt('Copie el enlace:', location.href);
+}
+
+/* =====================================================================
+   E. UTILIDADES HTML/SVG
+   ===================================================================== */
+const colorVar = { R: 'var(--green)', L: 'var(--red)', C: 'var(--purple)' };
+const kcls = { R: 'k-r', L: 'k-l', C: 'k-c' };
+// Nombres con subíndice (HTML) y en texto plano (SVG)
+const hX = (it) => `X<sub>${it.type === 'C' ? 'C' : 'L'}${it.idx}</sub>`;
+const hZ = (it) => `${SZ}<sub>${it.label}</sub>`;
+const hU = (it) => `${SU}<sub>${it.label}</sub>`;
+const pU = (it) => SU + it.label;
+const sp = (cls, html) => `<span class="${cls}">${html}</span>`;
+const eqn = (html) => `<div class="eq">${html}</div>`;
+// Flecha SVG con marcador por color
+function arrowDefs() {
+  const m = (id, c) => `<marker id="ah-${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`;
+  return '<defs>' + m('cyan', 'var(--cyan)') + m('green', 'var(--green)') + m('red', 'var(--red)') + m('purple', 'var(--purple)') + m('yellow', 'var(--yellow)') + m('muted', 'var(--muted)') + m('orange', 'var(--orange)') + '</defs>';
+}
+const line = (x1, y1, x2, y2, cls, head) =>
+  `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${cls}"${head ? ` marker-end="url(#ah-${head})"` : ''}/>`;
+const text = (x, y, s, o = {}) =>
+  `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.size || 13}" text-anchor="${o.anchor || 'middle'}" class="${o.cls || ''}"${o.fill ? ` style="fill:${o.fill}"` : ''}>${s}</text>`;
+
+/* =====================================================================
+   F. ESQUEMA DEL CIRCUITO (en el orden que ingresó el usuario)
+   ===================================================================== */
+function drawCircuit(sol) {
+  const els = sol.items.slice().sort((a, b) => a.pos - b.pos);
+  const n = els.length, Hh = 120, xs = 120, step = 150, W = xs + n * step + 40, y0 = 40, y1 = y0 + Hh;
+  let s = `<svg viewBox="-26 0 ${W + 26} ${y1 + 50}" width="${Math.min(W + 26, 760)}" role="img" aria-label="Esquema del circuito serie">` + arrowDefs();
+  // Cables laterales e inferior
+  s += `<path class="w" d="M40 ${y0 + Hh / 2 - 26} V${y0} H${xs - 30}"/><path class="w" d="M40 ${y0 + Hh / 2 + 26} V${y1} H${W - 20} V${y0}"/>`;
+  // Fuente senoidal
+  s += `<circle cx="40" cy="${y0 + Hh / 2}" r="26" class="src"/><path class="src" d="M26 ${y0 + Hh / 2} q7 -14 14 0 t14 0"/>`;
+  s += text(-8, y0 + Hh / 2 + 5, SU, { size: 17, anchor: 'end', fill: 'var(--cyan)' });
+  // Componentes sobre el cable superior
+  els.forEach((it, k) => {
+    const a = xs + k * step - 30, b = a + 110, mid = (a + b) / 2;
+    s += `<path class="w" d="M${k === 0 ? xs - 30 : a - 40} ${y0} H${a}"/>`;
+    if (it.type === 'R') {
+      let d = `M${a} ${y0}`; for (let i = 1; i <= 8; i++) d += ` L${a + (b - a) * i / 8} ${y0 + (i === 8 ? 0 : (i % 2 ? -13 : 13))}`;
+      s += `<path class="cR" d="${d}"/>`;
+    } else if (it.type === 'L') {
+      let d = `M${a} ${y0}`; const sg = (b - a) / 4;
+      for (let i = 0; i < 4; i++) d += ` a${sg / 2} ${sg / 2} 0 0 1 ${sg} 0`;
+      s += `<path class="cL" d="${d}"/>`;
+    } else {
+      s += `<path class="w" d="M${a} ${y0} H${mid - 6}"/><path class="w" d="M${mid + 6} ${y0} H${b}"/>` +
+           `<line class="cC" x1="${mid - 6}" y1="${y0 - 20}" x2="${mid - 6}" y2="${y0 + 20}"/><line class="cC" x1="${mid + 6}" y1="${y0 - 20}" x2="${mid + 6}" y2="${y0 + 20}"/>`;
+    }
+    const sym = it.type + it.idx;                       // etiqueta, p. ej. R1, L, C2
+    const raw = state.els[it.pos];
+    s += text(mid, y0 - 26, `${sym} = ${raw ? raw.v : ''} ${raw ? raw.u : ''}`, { size: 13, fill: colorVar[it.type] });
+    if (k === n - 1) s += `<path class="w" d="M${b} ${y0} H${W - 20}"/>`;
+  });
+  // Flecha de corriente
+  s += `<path d="M${W / 2 - 40} ${y0 + 62} q40 -26 80 0" class="fIdash" fill="none" marker-end="url(#ah-yellow)"/>` + text(W / 2, y0 + 92, SI, { size: 17, fill: 'var(--yellow)' });
+  return s + '</svg>';
+}
+
+/* =====================================================================
+   G. DIAGRAMA FASORIAL (suma punta-cola, escala automática)
+   ===================================================================== */
+// Reparte las etiquetas para que no se pisen: si dos se solapan, la segunda baja hasta quedar libre
+function placeLabels(list, W) {
+  const placed = [];
+  list.slice().sort((a, b) => a.y - b.y).forEach(l => {
+    const w = l.str.length * 6.8;                                   // ancho estimado del texto
+    let x0 = l.anchor === 'start' ? l.x : l.anchor === 'end' ? l.x - w : l.x - w / 2;
+    // Recorte a los bordes: si el texto se saldría del SVG, se desplaza hacia dentro
+    const dx = x0 < 4 ? 4 - x0 : (x0 + w > W - 4 ? (W - 4) - (x0 + w) : 0);
+    l.x += dx; x0 += dx;
+    let guard = 0;
+    while (guard++ < 40 && placed.some(p => Math.abs(p.y - l.y) < 15 && x0 < p.x1 && x0 + w > p.x0)) l.y += 15;
+    placed.push({ x0, x1: x0 + w, y: l.y });
+  });
+  return list.map(l => text(l.x, l.y, l.str, { size: l.size || 12.5, anchor: l.anchor, fill: l.color, cls: 'h' })).join('');
+}
+
+function drawPhasors(sol) {
+  const W = 700, H = 470, mx = 120, my = 70;
+  const hasLC = sol.items.some(i => i.type === 'L') && sol.items.some(i => i.type === 'C');
+  // Polígono punta-cola en el orden R, L, C
+  let cur = C(0, 0);
+  const segs = sol.ordered.map(it => { const a = cur; cur = add(cur, it.U); return { it, a, b: cur }; });
+  const Iunit = C(sol.I.re / sol.Imag, sol.I.im / sol.Imag);
+  const Ivec = C(Iunit.re * sol.P.U * 0.45, Iunit.im * sol.P.U * 0.45);   // escala arbitraria
+  const pts = [C(0, 0), sol.Uph, Ivec]; segs.forEach(g => { pts.push(g.a, g.b); });
+  const xsr = pts.map(p => p.re), ysr = pts.map(p => p.im);
+  const minX = Math.min(...xsr), maxX = Math.max(...xsr), minY = Math.min(...ysr), maxY = Math.max(...ysr);
+  const rx = Math.max(maxX - minX, 1e-12), ry = Math.max(maxY - minY, 1e-12);
+  const sc = Math.min((W - 2 * mx) / rx, (H - 2 * my) / ry);
+  const ox = mx + ((W - 2 * mx) - rx * sc) / 2, oy = my + ((H - 2 * my) - ry * sc) / 2;
+  const X = (z) => ox + (z.re - minX) * sc, Y = (z) => H - oy - (z.im - minY) * sc;
+  const cx = xsr.reduce((a, b) => a + b, 0) / pts.length, cy = ysr.reduce((a, b) => a + b, 0) / pts.length;
+  const cenX = X(C(cx, cy)), cenY = Y(C(cx, cy));                            // centro del polígono en pantalla
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Diagrama fasorial">` + arrowDefs();
+  const labels = [];
+  // Etiqueta junto a un segmento, hacia el lado "exterior" (inside=false) o "interior" (inside=true)
+  const mkLabel = (xa, ya, xb, yb, str, color, inside) => {
+    const mxp = (xa + xb) / 2, myp = (ya + yb) / 2, dx = xb - xa, dy = yb - ya, L = Math.hypot(dx, dy) || 1;
+    let nx = -dy / L, ny = dx / L;
+    const away = (mxp - cenX) * nx + (myp - cenY) * ny;
+    if ((away < 0) !== !!inside) { nx = -nx; ny = -ny; }
+    const side = Math.abs(nx) > 0.35;
+    labels.push({ x: mxp + nx * 12, y: myp + ny * 12 + (side ? 4 : (ny > 0 ? 12 : -4)), anchor: side ? (nx > 0 ? 'start' : 'end') : 'middle', str, color });
+  };
+  // Tensiones parciales; el inductor se desplaza un poco si hay L y C (son colineales)
+  const colorByType = { R: 'green', L: 'red', C: 'purple' };
+  segs.forEach(g => {
+    let off = C(0, 0);
+    if (hasLC && g.it.type === 'L') {
+      const d = Math.hypot(g.b.re - g.a.re, g.b.im - g.a.im) || 1;
+      const k = 8 / sc;                                    // 8 px, convertidos a unidades de tensión
+      off = C((g.b.im - g.a.im) / d * k, -(g.b.re - g.a.re) / d * k);
+      s += line(X(g.a), Y(g.a), X(add(g.a, off)), Y(add(g.a, off)), 'dot') + line(X(g.b), Y(g.b), X(add(g.b, off)), Y(add(g.b, off)), 'dot');
+    }
+    const a = add(g.a, off), b = add(g.b, off);
+    s += line(X(a), Y(a), X(b), Y(b), 'f' + g.it.type, colorByType[g.it.type]);
+    mkLabel(X(a), Y(a), X(b), Y(b), `${pU(g.it)} = ${eng2(mag(g.it.U), 'V')} ∠ ${fmtAng(argDeg(g.it.U))}`, colorVar[g.it.type], false);
+  });
+  // Tensión total, corriente (trazo discontinuo) y ángulo de desfase
+  const O = C(0, 0);
+  s += line(X(O), Y(O), X(sol.Uph), Y(sol.Uph), 'fU', 'cyan');
+  mkLabel(X(O), Y(O), X(sol.Uph), Y(sol.Uph), `${SU} = ${eng2(sol.P.U, 'V')} ∠ ${fmtAng(sol.P.theta)}`, 'var(--cyan)', false);
+  s += line(X(O), Y(O), X(Ivec), Y(Ivec), 'fIdash', 'yellow');
+  mkLabel(X(O), Y(O), X(Ivec) * 1 + 0, Y(Ivec), `${SI} = ${eng2(sol.Imag, 'A')} ∠ ${fmtAng(normAng(sol.Iang))}`, 'var(--yellow)', true);
+  // Arco entre U e I (ángulo de İ respecto a U̇ = −φ)
+  const a1 = sol.P.theta, a2 = sol.Iang, dlt = normAng(a2 - a1);
+  if (Math.abs(dlt) > 0.05) {
+    const r = 44, p = (a) => [X(O) + r * Math.cos(rad(a)), Y(O) - r * Math.sin(rad(a))];
+    const A = p(a1), B = p(a1 + dlt);
+    s += `<path class="fO" d="M${A[0].toFixed(1)} ${A[1].toFixed(1)} A${r} ${r} 0 0 ${dlt > 0 ? 0 : 1} ${B[0].toFixed(1)} ${B[1].toFixed(1)}"/>`;
+    const pm = p(a1 + dlt / 2);
+    labels.push({ x: X(O) + (pm[0] - X(O)) * 1.5 + 8, y: Y(O) + (pm[1] - Y(O)) * 1.5 + 4, anchor: 'start', str: `${dlt > 0 ? 'adelanto' : 'atraso'} ${fmtAng(Math.abs(dlt))}`, color: 'var(--orange)', size: 12 });
+  }
+  return s + placeLabels(labels, W) + '</svg>';
+}
+
+/* =====================================================================
+   H. TRIÁNGULO DE IMPEDANCIA
+   ===================================================================== */
+function drawZ(sol) {
+  const W = 520, H = 360, m = 70;
+  const R = sol.Rt, XL = sol.XLt, XC = sol.XCt, net = sol.net;
+  // Puntos: (0,0) → (R,0) → (R,XL) → (R,net)
+  const ys = [0, XL, net, XL - XC], xsr = [0, R];
+  const minY = Math.min(...ys), maxY = Math.max(...ys), maxX = Math.max(R, 1e-12);
+  const ry = Math.max(maxY - minY, 1e-12);
+  const sc = Math.min((W - 2 * m - 80) / maxX, (H - 2 * m) / ry);
+  const ox = m, oy = H - m - (0 - minY) * sc - ((H - 2 * m) - ry * sc) / 2;
+  const X = (v) => ox + v * sc, Y = (v) => oy - v * sc;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Triángulo de impedancia">` + arrowDefs();
+  s += line(X(0) - 20, Y(0), X(maxX) + 90, Y(0), 'axis', 'muted') + text(X(maxX) + 90, Y(0) + 16, 'Re (Ω)', { size: 11, anchor: 'end', cls: 'm' });
+  s += line(X(0), Y(minY) + 14, X(0), Y(maxY) - 20, 'axis', 'muted') + text(X(0) + 6, Y(maxY) - 22, 'Im', { size: 11, anchor: 'start', cls: 'm' });
+  if (R > 0) { s += line(X(0), Y(0), X(R), Y(0), 'fR', 'green') + text(X(R) / 2 + X(0) / 2, Y(0) + (net >= 0 ? 18 : -10), `R = ${f2(R)} Ω`, { size: 12.5, fill: 'var(--green)', cls: 'h' }); }
+  let xo = X(R);
+  if (XL > 0) { s += line(xo, Y(0), xo, Y(XL), 'fL', 'red') + text(xo - 10, (Y(0) + Y(XL)) / 2, `${SZ}L = +jXL = +j${f2(XL)} Ω`, { size: 12.5, anchor: 'end', fill: 'var(--red)', cls: 'h' }); }
+  if (XC > 0) { const xc = xo + (XL > 0 ? 16 : 0); s += line(xc, Y(XL), xc, Y(XL - XC), 'fC', 'purple') + text(xc + 10, (Y(XL) + Y(XL - XC)) / 2 + (XL > 0 ? 24 : 0), `${SZ}C = −jXC = −j${f2(XC)} Ω`, { size: 12.5, anchor: 'start', fill: 'var(--purple)', cls: 'h' }); }
+  s += line(X(0), Y(0), X(R), Y(net), 'fZ', 'cyan');
+  s += text(W / 2, H - 12, `${SZ} = ${f2(sol.Zmag)} ∠ ${fmtAng(sol.phi)} Ω   (R = ${f2(R)} Ω, X = ${sol.resistive ? '0,00' : f2(net)} Ω)`, { size: 13, fill: 'var(--cyan)', cls: 'h' });
+  if (Math.abs(sol.phi) > 0.05) {
+    const r = 40, a = rad(sol.phi);
+    s += `<path class="fO" d="M${(X(0) + r).toFixed(1)} ${Y(0).toFixed(1)} A${r} ${r} 0 0 ${sol.phi > 0 ? 0 : 1} ${(X(0) + r * Math.cos(a)).toFixed(1)} ${(Y(0) - r * Math.sin(a)).toFixed(1)}"/>`;
+    s += text(X(0) + r + 14, Y(0) + (sol.phi > 0 ? -8 : 20), 'φ', { size: 15, anchor: 'start', fill: 'var(--orange)' });
+  }
+  return s + '</svg>';
+}
+
+/* =====================================================================
+   I. FORMAS DE ONDA u(t) e i(t)
+   ===================================================================== */
+function drawWave(sol) {
+  const W = 760, H = 270, ml = 20, mr = 20, mt = 30, mb = 40, T = 1 / sol.P.f, tmax = 2 * T;
+  const X = (t) => ml + (t / tmax) * (W - ml - mr), cy = mt + (H - mt - mb) / 2, A = (H - mt - mb) / 2 * 0.92;
+  const th = sol.P.theta, ph = sol.phi;
+  const path = (amp, shift) => { let d = ''; for (let k = 0; k <= 400; k++) { const t = tmax * k / 400;
+    const v = Math.sin(2 * Math.PI * t / T + rad(shift)); d += (k ? 'L' : 'M') + X(t).toFixed(1) + ' ' + (cy - amp * v).toFixed(1); } return d; };
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Formas de onda de tensión y corriente">` + arrowDefs();
+  s += `<line class="axis" x1="${ml}" y1="${cy}" x2="${W - mr}" y2="${cy}"/>`;
+  for (let k = 0; k <= 8; k++) { const t = tmax * k / 8; s += `<line class="gl" x1="${X(t).toFixed(1)}" y1="${mt}" x2="${X(t).toFixed(1)}" y2="${H - mb}"/>`; }
+  s += `<path class="fU" d="${path(A, th)}"/><path class="fI" d="${path(A * 0.6, th - ph)}"/>`;
+  // Cruces por cero ascendentes dentro del 2.º período: u cruza en t0 e i cruza (φ/360)·T después (o antes)
+  const t0 = T * ((((-th / 360) % 1) + 1) % 1) + T;
+  const t1 = t0 + (ph / 360) * T;
+  if (Math.abs(ph) > 0.05 && t1 > 0 && t1 < tmax && t0 < tmax) {
+    s += line(X(t0), mt - 4, X(t0), H - mb + 6, 'dot') + line(X(t1), mt - 4, X(t1), H - mb + 6, 'dot');
+    // Flecha naranja que marca el desfase temporal entre ambos cruces
+    s += `<line x1="${X(Math.min(t0, t1)).toFixed(1)}" y1="${cy - A - 6}" x2="${X(Math.max(t0, t1)).toFixed(1)}" y2="${cy - A - 6}" class="fO" marker-end="url(#ah-orange)"/>`;
+  }
+  const dt = Math.abs(ph) / 360 * T;
+  s += text(ml, H - 12, '0', { size: 11, anchor: 'start', cls: 'm' }) + text(X(T), H - 12, `T = ${eng(T, 's')}`, { size: 11, cls: 'm' }) + text(W - mr, H - 12, `2T = ${eng(2 * T, 's')}`, { size: 11, anchor: 'end', cls: 'm' });
+  s += text(ml + 6, 16, `u(t) = √2·${eng2(sol.P.U, 'V')}·sen(ωt ${th < 0 ? '−' : '+'} ${fmtAng(Math.abs(th))})`, { size: 12.5, anchor: 'start', fill: 'var(--cyan)' });
+  s += text(W - mr, 16, `i(t) = √2·${eng2(sol.Imag, 'A')}·sen(ωt ${normAng(sol.Iang) < 0 ? '−' : '+'} ${fmtAng(Math.abs(normAng(sol.Iang)))})`, { size: 12.5, anchor: 'end', fill: 'var(--yellow)' });
+  return { svg: s + '</svg>', dt };
+}
+
+/* =====================================================================
+   J. RESULTADOS: tarjetas resumen y pasos con verificaciones
+   ===================================================================== */
+function buildTiles(sol) {
+  const t = (k, v) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const fpTxt = sol.resistive ? 'unitario' : (sol.phi > 0 ? 'en atraso' : 'en adelanto');
+  return t('Impedancia ' + SZ, `${f2(sol.Zmag)} Ω ∠ ${fmtAng(sol.phi)}`) +
+    t('Corriente ' + SI, `${eng2(sol.Imag, 'A')} ∠ ${fmtAng(normAng(sol.Iang))}`) +
+    t('Carácter del circuito', sol.kind) +
+    t('cos φ (factor de potencia)', `${fmtP(Math.abs(sol.fp) < 1e-9 ? 0 : sol.fp, 4)} <span class="muted small">(${fpTxt})</span>`) +
+    t('Frecuencia de resonancia f₀', (sol.f0 ? eng(sol.f0, 'Hz', 5) : '— (requiere L y C)') +
+      '<div class="muted small" style="font-weight:400; margin-top:4px">f₀ = 1 / (2π√(L·C))</div>');
+}
+
+function buildSteps(sol) {
+  const P = sol.P, steps = [];
+  const chk = (q, a) => `<details class="check"><summary>✔ Punto de verificación: ${q}</summary><div class="ans">${a}</div></details>`;
+  const fIn = `${fmt(P.f, 6)} Hz`;
+
+  // ---- Paso 0 (datos): ω y T
+  steps.push({ t: 'Datos y pulsación', h:
+    eqn(`${SU} = ${sp('k-u b', polarU(P.U, P.theta, 'V'))}&emsp; f = ${fIn}`) +
+    eqn(`ω = 2πf = 2π · ${fmt(P.f, 6)} = ${sp('b', fmt(sol.w, 6))} rad/s &emsp; T = 1/f = ${sp('b', eng(1 / P.f, 's', 5))}`) +
+    `<p class="muted small">Los módulos son valores eficaces. El ángulo de la fuente se toma como referencia del diagrama.</p>`,
+    c: chk('¿cuántos ciclos hay en un segundo?', `Hay f = ${fIn} ciclos por segundo; cada uno dura T = ${eng(1 / P.f, 's', 5)}.`) });
+
+  // ---- Paso 1: reactancias (reales) e impedancias (complejas)
+  let h1 = '';
+  sol.items.slice().sort((a, b) => a.pos - b.pos).forEach(it => {
+    if (it.type === 'R') h1 += eqn(`${hZ(it)} = R<sub>${it.idx}</sub> + j0 = ${sp('k-r b', f2(it.val) + ' ∠ 0,00° Ω')}`);
+    else if (it.type === 'L') h1 += eqn(`${hX(it)} = ωL<sub>${it.idx}</sub> = 2π · ${fmt(P.f, 6)} · ${fmt(it.val)} = ${sp('b', f2(it.X) + ' Ω')}` +
+      `<br>${hZ(it)} = j${hX(it)} = j${f2(it.X)} = ${sp('k-l b', f2(it.X) + ' ∠ 90,00° Ω')}`);
+    else h1 += eqn(`${hX(it)} = 1 / (ωC<sub>${it.idx}</sub>) = 1 / (2π · ${fmt(P.f, 6)} · ${fmt(it.val)}) = ${sp('b', f2(it.X) + ' Ω')}` +
+      `<br>${hZ(it)} = −j${hX(it)} = −j${f2(it.X)} = ${sp('k-c b', f2(it.X) + ' ∠ −90,00° Ω')}`);
+  });
+  const ask1 = (sol.XLt > 0 && sol.XCt > 0)
+    ? `X<sub>L</sub> = ${f2(sol.XLt)} Ω y X<sub>C</sub> = ${f2(sol.XCt)} Ω. Predomina la reactancia ${sol.XLt > sol.XCt ? 'inductiva ⇒ el circuito será inductivo' : sol.XLt < sol.XCt ? 'capacitiva ⇒ el circuito será capacitivo' : 'inductiva y capacitiva por igual ⇒ resonancia (resistivo)'}.`
+    : (sol.XLt > 0 ? 'Solo hay reactancia inductiva ⇒ el circuito será inductivo (la corriente atrasa).' : sol.XCt > 0 ? 'Solo hay reactancia capacitiva ⇒ el circuito será capacitivo (la corriente adelanta).' : 'No hay reactancias: el circuito es puramente resistivo (corriente en fase).');
+  h1 += `<p class="muted small">La <b>reactancia</b> X es un número real (en Ω). La <b>impedancia</b> del elemento es el fasor: ${SZ}<sub>L</sub> = jX<sub>L</sub> y ${SZ}<sub>C</sub> = −jX<sub>C</sub>.</p>`;
+  steps.push({ t: 'Reactancias e impedancias de cada elemento', h: h1, c: chk('sin calcular Ẑ, ¿qué carácter espera?'.replace('Ẑ', SZ), ask1) });
+
+  // ---- Paso 2: impedancia total
+  const Rs = sol.items.filter(i => i.type === 'R').map(i => f2(i.val)).join(' + ') || '0';
+  const XLs = sol.items.filter(i => i.type === 'L').map(i => f2(i.X)).join(' + ') || '0';
+  const XCs = sol.items.filter(i => i.type === 'C').map(i => f2(i.X)).join(' + ') || '0';
+  steps.push({ t: 'Impedancia total (serie: se suman)', h:
+    eqn(`${SZ} = ΣR + j(ΣX<sub>L</sub> − ΣX<sub>C</sub>)`) +
+    eqn(`${SZ} = (${Rs}) + j[(${XLs}) − (${XCs})]<br>${SZ} = ${rect(sol.Zt)} Ω`) +
+    eqn(`|${SZ}| = √(R² + X²) = √(${f2(sol.Rt)}² + ${f2(sol.net)}²) = ${sp('b', f2(sol.Zmag) + ' Ω')}<br>` +
+      `φ = tan⁻¹(X / R) = tan⁻¹(${f2(sol.net)} / ${f2(sol.Rt)}) = ${sp('b', fmtAng(sol.phi))}<br>` +
+      `${SZ} = ${sp('k-u b', polar(sol.Zmag, sol.phi) + ' Ω')}`) +
+    `<p>Reactancia neta X = X<sub>L</sub> − X<sub>C</sub> = ${f2(sol.net)} Ω ⇒ circuito ${sp('b', sol.kind)}.</p>`,
+    c: chk('¿es |Ẑ| ≥ R y concuerda el signo de φ?'.replace('Ẑ', SZ),
+      `|${SZ}| = ${f2(sol.Zmag)} Ω ${sol.Zmag + 1e-12 >= sol.Rt ? '≥' : '<'} R = ${f2(sol.Rt)} Ω. ` +
+      `Con X ${sol.resistive ? '≈ 0' : sol.net > 0 ? '> 0' : '< 0'}, φ ${sol.resistive ? '= 0°' : sol.net > 0 ? '> 0' : '< 0'}: ${sol.kind}.`) });
+
+  // ---- Paso 3: corriente
+  steps.push({ t: 'Corriente total', h:
+    eqn(`${SI} = ${SU} / ${SZ} = (${polarU(P.U, P.theta, 'V')}) / (${polar(sol.Zmag, sol.phi)} Ω)`) +
+    eqn(`|${SI}| = ${eng2(P.U, 'V')} / ${f2(sol.Zmag)} Ω = ${sp('b', eng2(sol.Imag, 'A'))}<br>` +
+      `∠${SI} = ${fmtAng(P.theta)} − (${fmtAng(sol.phi)}) = ${sp('b', fmtAng(normAng(sol.Iang)))}<br>` +
+      `${SI} = ${sp('k-i b', polarU(sol.Imag, normAng(sol.Iang), 'A'))}`) +
+    `<p class="muted small">Al dividir se <b>dividen los módulos</b> y se <b>restan los ángulos</b>.</p>`,
+    c: chk('¿qué ángulo debe tener İ?'.replace('İ', SI),
+      `Debe ser θ − φ = ${fmtAng(P.theta)} − (${fmtAng(sol.phi)}) = ${fmtAng(normAng(sol.Iang))}: ${Math.abs(sol.phi) < 1e-6 ? 'en fase con la tensión' : sol.phi > 0 ? 'la corriente atrasa a la tensión' : 'la corriente adelanta a la tensión'}.`) });
+
+  // ---- Paso 4: tensiones por elemento
+  let h4 = '';
+  sol.items.slice().sort((a, b) => a.pos - b.pos).forEach(it => {
+    const zs = it.type === 'R' ? `${f2(it.val)} ∠ 0,00°` : it.type === 'L' ? `${f2(it.X)} ∠ 90,00°` : `${f2(it.X)} ∠ −90,00°`;
+    h4 += eqn(`${hU(it)} = ${hZ(it)} · ${SI} = (${zs} Ω)(${polarU(sol.Imag, normAng(sol.Iang), 'A')})<br>` +
+      `${hU(it)} = ${sp(kcls[it.type] + ' b', polarU(mag(it.U), normAng(argDeg(it.U)), 'V'))} &emsp;<span class="muted">(${rectU(it.U, 'V')})</span>`);
+  });
+  h4 += `<p class="muted small">Al multiplicar se <b>multiplican los módulos</b> y se <b>suman los ángulos</b>. En R el ángulo no cambia; en L se suman +90°; en C, −90°.</p>`;
+  steps.push({ t: 'Tensión en cada elemento', h: h4,
+    c: chk('¿cómo están los ángulos de las tensiones respecto a İ?'.replace('İ', SI),
+      `${SU}<sub>R</sub> en fase con ${SI}; ${SU}<sub>L</sub> adelanta 90°; ${SU}<sub>C</sub> atrasa 90° (regla ELI / ICE). ` +
+      `Aquí: ${sol.items.map(it => `∠${hU(it)} = ${fmtAng(normAng(argDeg(it.U)))}`).join('; ')}.`) });
+
+  // ---- Paso 5: Kirchhoff, diagrama y FP
+  const sums = sol.items.map(it => `(${rectU(it.U, 'V')})`).join(' + ');
+  steps.push({ t: 'Comprobación (Kirchhoff) y diagrama fasorial', h:
+    eqn(`${SU} = Σ ${SU}<sub>k</sub> = ${sums}<br>${SU} = ${rectU(sol.sum, 'V')} = ${sp('k-u b', polarU(mag(sol.sum), argDeg(sol.sum), 'V'))}`) +
+    `<p>Tensión de la fuente: ${polarU(P.U, P.theta, 'V')} ⇒ error relativo = ${sol.kirErr < 1e-9 ? '< 10<sup>−9</sup>' : fmt(sol.kirErr, 3)} ${sol.kirErr < 1e-6 ? '<span class="k-r b">✔ coincide</span>' : '<span class="k-l b">✘ no coincide</span>'}</p>` +
+    eqn(`Desfase de ${SI} respecto a ${SU}: ${sp('b', fmtAng(normAng(sol.Iang - P.theta)))} (${Math.abs(sol.phi) < 1e-6 ? 'en fase' : sol.phi > 0 ? 'atraso' : 'adelanto'})<br>` +
+      `cos φ = cos(${fmtAng(sol.phi)}) = ${sp('b', fmt(Math.abs(sol.fp) < 1e-9 ? 0 : sol.fp, 4))}`) +
+    `<p class="muted small">En el diagrama (arriba) las tensiones parciales se suman «punta con cola» y cierran sobre ${SU}.</p>`,
+    c: chk('¿por qué no basta con sumar los módulos de las tensiones?',
+      `Porque las tensiones están desfasadas: Σ|${SU}<sub>k</sub>| = ${eng2(sol.items.reduce((s, i) => s + mag(i.U), 0), 'V')}, mientras que |${SU}| = ${eng2(P.U, 'V')}. La suma debe ser fasorial (con ángulos).`) });
+  return steps;
+}
+
+/* =====================================================================
+   K. CICLO DE ACTUALIZACIÓN
+   ===================================================================== */
+function update() {
+  const r = readParams();
+  $('errBox').innerHTML = r.errs.length ? `<div class="err">${r.errs.map(e => '• ' + e).join('<br>')}</div>` : '';
+  const blank = (msg) => ['circuitSvg', 'tiles', 'phasorSvg', 'zSvg', 'waveSvg', 'steps'].forEach(id => $(id).innerHTML = id === 'circuitSvg' ? `<p class="muted">${msg}</p>` : '');
+  if (r.errs.length) { blank('Corrija los datos marcados para ver el circuito.'); return; }
+  const sol = solve(r.P);
+  if (sol.error) { $('errBox').innerHTML = `<div class="err">${sol.error}</div>`; blank('Sin solución con estos datos.'); return; }
+  $('circuitSvg').innerHTML = drawCircuit(sol);
+  $('tiles').innerHTML = buildTiles(sol);
+  $('phasorSvg').innerHTML = drawPhasors(sol);
+  $('phasorCap').innerHTML = `${SU} (celeste), tensiones parciales (verde = R, rojo = L, violeta = C) y ${SI} (amarillo, trazo discontinuo, <b>escala arbitraria</b>).` +
+    (sol.items.some(i => i.type === 'L') && sol.items.some(i => i.type === 'C') ? ` ${SU}<sub>L</sub> se desplazó levemente porque es colineal con ${SU}<sub>C</sub>.` : '');
+  $('zSvg').innerHTML = drawZ(sol);
+  $('zCap').innerHTML = `Reactancia neta X = X<sub>L</sub> − X<sub>C</sub> = ${f2(sol.net)} Ω ⇒ ${sol.kind}.`;
+  const w = drawWave(sol); $('waveSvg').innerHTML = w.svg;
+  $('waveCap').innerHTML = Math.abs(sol.phi) < 0.05 ? 'Tensión y corriente están en fase.' :
+    `La corriente ${sol.phi > 0 ? 'atrasa' : 'adelanta'} a la tensión ${fmtAng(Math.abs(sol.phi))}, es decir Δt = |φ|/360° · T = ${eng(w.dt, 's', 4)}. (Cada señal está normalizada a su propio pico: sus unidades difieren.)`;
+  const steps = buildSteps(sol);
+  $('steps').innerHTML = steps.map((s, i) => `<div class="step"><h3><span class="n">${i}</span>${s.t}</h3>${s.h}${s.c}</div>`).join('');
+  saveHash();
+}
+
+/* =====================================================================
+   M. AUTOVERIFICACIÓN CON LOS EJEMPLOS 1 Y 2 DE LOS APUNTES
+   ===================================================================== */
+function selfTest() {
+  const close = (a, b, tol) => Math.abs(a - b) <= tol;
+  const e1 = solve({ U: 16, theta: 0, f: 100, els: [{ type: 'R', val: 1 }, { type: 'L', val: 1e-3 }, { type: 'C', val: 1000e-6 }] });
+  const e2 = solve({ U: 9.2, theta: 0, f: 50, els: [{ type: 'R', val: 9990 }, { type: 'C', val: 467e-9 }] });
+  const ok = close(e1.Zmag, 1.3885, 5e-4) && close(e1.phi, -43.93, 0.01) && close(e1.Imag, 11.5236, 5e-4) &&
+             close(mag(e1.items[1].U), 7.2405, 5e-4) && close(mag(e1.items[2].U), 18.3403, 5e-4) && e1.kirErr < 1e-12 &&
+             close(e2.Zmag, 12093.75, 0.05) && close(e2.phi, -34.31, 0.01) && close(mag(e2.items[0].U), 7.5996, 5e-4) &&
+             close(mag(e2.items[1].U), 5.1851, 5e-4);
+  $('selftest').innerHTML = ok ? '<span class="k-r">✔ Motor de cálculo verificado con los Ejemplos 1 y 2.</span>' : '<span class="k-l">✘ Falló la autoverificación del motor.</span>';
+  return ok;
+}
+
+/* =====================================================================
+   N. ARRANQUE
+   ===================================================================== */
+(function init() {
+  let theme = 'dark';                                    // oscuro por defecto
+  try { theme = localStorage.getItem('acserie-theme') || 'dark'; } catch (e) { /* sin almacenamiento */ }
+  setTheme(theme);
+  if (!loadHash()) loadPreset('ej1');                    // enlace compartido o Ejemplo 1
+  bindInputs(); renderInputs(); update(); selfTest();
+})();
+</script>
+</body>
+</html>
